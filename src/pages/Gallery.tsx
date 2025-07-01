@@ -18,7 +18,8 @@ import {
   Zap,
   Heart,
   X,
-  Camera as PhotoIcon
+  Camera as PhotoIcon,
+  ZoomIn
 } from 'lucide-react';
 import type { GalleryItem } from '../types';
 import { fetchGalleryItems } from '../lib/galleryApi';
@@ -29,6 +30,7 @@ const Gallery: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
+  const [expandedPhoto, setExpandedPhoto] = useState<{ url: string; caption: string } | null>(null);
 
   // Load gallery items on component mount
   useEffect(() => {
@@ -178,24 +180,43 @@ const Gallery: React.FC = () => {
       if (beforeImage && afterImage) {
         return (
           <div className="w-full h-full">
+            {/* Mobile: Stack vertically, Desktop: Side by side */}
             <div className="grid grid-cols-1 sm:grid-cols-2 h-full gap-1">
-              <div className="relative h-full">
+              <div 
+                className="relative h-full min-h-[120px] sm:min-h-full group cursor-pointer"
+                onClick={() => setExpandedPhoto({ 
+                  url: beforeImage.image_url, 
+                  caption: beforeImage.caption || `${item.title} - Before` 
+                })}
+              >
                 <img 
                   src={beforeImage.image_url} 
                   alt={beforeImage.caption || `${item.title} - Before`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded-lg sm:rounded-none sm:rounded-l-lg"
                 />
-                <div className="absolute top-3 left-3 bg-red-500 text-white text-sm px-3 py-1.5 rounded-lg font-bold shadow-lg">
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+                  <ZoomIn className="w-6 h-6 text-white" />
+                </div>
+                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-red-500 text-white text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg font-bold shadow-lg">
                   BEFORE
                 </div>
               </div>
-              <div className="relative h-full">
+              <div 
+                className="relative h-full min-h-[120px] sm:min-h-full group cursor-pointer"
+                onClick={() => setExpandedPhoto({ 
+                  url: afterImage.image_url, 
+                  caption: afterImage.caption || `${item.title} - After` 
+                })}
+              >
                 <img 
                   src={afterImage.image_url} 
                   alt={afterImage.caption || `${item.title} - After`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded-lg sm:rounded-none sm:rounded-r-lg"
                 />
-                <div className="absolute top-3 right-3 bg-green-500 text-white text-sm px-3 py-1.5 rounded-lg font-bold shadow-lg">
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+                  <ZoomIn className="w-6 h-6 text-white" />
+                </div>
+                <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-green-500 text-white text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg font-bold shadow-lg">
                   AFTER
                 </div>
               </div>
@@ -217,12 +238,22 @@ const Gallery: React.FC = () => {
         <div className="w-full h-full">
           <div className="grid grid-cols-2 sm:grid-cols-3 h-full gap-1">
             {displayImages.map((image, index) => (
-              <div key={index} className="relative overflow-hidden">
+              <div 
+                key={index} 
+                className="relative overflow-hidden group cursor-pointer"
+                onClick={() => setExpandedPhoto({ 
+                  url: image.image_url, 
+                  caption: image.caption || `${item.title} - Step ${index + 1}` 
+                })}
+              >
                 <img 
                   src={image.image_url} 
                   alt={image.caption || `${item.title} - Step ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+                  <ZoomIn className="w-4 h-4 text-white" />
+                </div>
                 <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded font-bold">
                   {index + 1}
                 </div>
@@ -245,12 +276,22 @@ const Gallery: React.FC = () => {
         <div className="w-full h-full">
           <div className="grid grid-cols-2 h-full gap-1">
             {displayImages.map((image, index) => (
-              <div key={index} className="relative overflow-hidden">
+              <div 
+                key={index} 
+                className="relative overflow-hidden group cursor-pointer"
+                onClick={() => setExpandedPhoto({ 
+                  url: image.image_url, 
+                  caption: image.caption || `${item.title} - Process ${index + 1}` 
+                })}
+              >
                 <img 
                   src={image.image_url} 
                   alt={image.caption || `${item.title} - Process ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+                  <ZoomIn className="w-4 h-4 text-white" />
+                </div>
                 <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded-lg font-bold">
                   STEP {index + 1}
                 </div>
@@ -269,12 +310,21 @@ const Gallery: React.FC = () => {
     // Certifications: Show with certification badge
     if (mainImage) {
       return (
-        <div className="w-full h-full relative">
+        <div 
+          className="w-full h-full relative group cursor-pointer"
+          onClick={() => setExpandedPhoto({ 
+            url: mainImage.image_url, 
+            caption: mainImage.caption || item.alt_text || item.title 
+          })}
+        >
           <img 
             src={mainImage.image_url} 
             alt={mainImage.caption || item.alt_text || item.title}
             className="w-full h-full object-cover"
           />
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+            <ZoomIn className="w-6 h-6 text-white" />
+          </div>
           {item.category === 'certifications' && (
             <div className="absolute top-3 right-3 bg-amber-500 text-white text-sm px-3 py-1.5 rounded-lg font-bold shadow-lg">
               CERTIFIED
@@ -586,27 +636,27 @@ const Gallery: React.FC = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4"
+              className="bg-white rounded-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto mx-2 sm:mx-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 sm:p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 pr-4">{selectedItem.title}</h2>
+              <div className="p-3 sm:p-6">
+                <div className="flex justify-between items-start mb-3 sm:mb-4">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 pr-2 sm:pr-4">{selectedItem.title}</h2>
                   <button
                     onClick={() => setSelectedItem(null)}
-                    className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                    className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1"
                   >
                     <X className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                 </div>
                 
-                <div className="h-48 sm:h-64 bg-gradient-to-br from-green-100 to-red-100 rounded-lg mb-4 sm:mb-6 overflow-hidden">
+                <div className="h-64 sm:h-80 bg-gradient-to-br from-green-100 to-red-100 rounded-lg mb-4 sm:mb-6 overflow-hidden">
                   {renderModalImages(selectedItem)}
                 </div>
 
-                <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">{selectedItem.description}</p>
+                <p className="text-gray-600 mb-3 sm:mb-6 text-sm sm:text-base">{selectedItem.description}</p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-6">
                   {selectedItem.equipment_type && (
                     <div>
                       <label className="text-sm font-medium text-gray-700">Equipment</label>
@@ -642,19 +692,28 @@ const Gallery: React.FC = () => {
                 
                 {/* Image Information */}
                 {selectedItem.gallery_images && selectedItem.gallery_images.length > 0 && (
-                  <div className="bg-gray-50 p-3 sm:p-4 rounded-lg mt-4">
+                  <div className="bg-gray-50 p-3 sm:p-4 rounded-lg mt-3 sm:mt-4">
                     <label className="text-xs sm:text-sm font-medium text-gray-700 block mb-2">
                       Images ({selectedItem.gallery_images.length})
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
                       {selectedItem.gallery_images.map((image, index) => (
                         <div key={image.id || index} className="text-center">
-                          <div className="h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-lg mb-1 overflow-hidden">
+                          <div 
+                            className="h-12 sm:h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-lg mb-1 overflow-hidden group cursor-pointer relative"
+                            onClick={() => setExpandedPhoto({ 
+                              url: image.image_url, 
+                              caption: image.caption || `${selectedItem.title} - ${image.image_type}` 
+                            })}
+                          >
                             <img 
                               src={image.image_url} 
                               alt={image.caption || `${selectedItem.title} - ${image.image_type}`}
                               className="w-full h-full object-cover"
                             />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+                              <ZoomIn className="w-3 h-3 text-white" />
+                            </div>
                           </div>
                           <span className="text-xs text-gray-600 capitalize font-medium">
                             {image.image_type.replace('-', ' ')}
@@ -665,6 +724,51 @@ const Gallery: React.FC = () => {
                   </div>
                 )}
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Expanded photo modal */}
+      <AnimatePresence>
+        {expandedPhoto && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50"
+            onClick={() => setExpandedPhoto(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="relative w-full max-w-4xl max-h-[80vh] bg-white rounded-lg overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Image container with fixed aspect ratio */}
+              <div className="relative w-full h-[60vh] sm:h-[70vh] bg-gray-100 flex items-center justify-center">
+                <img
+                  src={expandedPhoto.url}
+                  alt={expandedPhoto.caption}
+                  className="max-w-full max-h-full object-contain"
+                />
+                
+                {/* Close button */}
+                <button
+                  onClick={() => setExpandedPhoto(null)}
+                  className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 z-10"
+                >
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+              
+              {/* Caption section */}
+              {expandedPhoto.caption && (
+                <div className="px-4 py-3 sm:px-6 sm:py-4 bg-white border-t border-gray-200">
+                  <p className="text-sm sm:text-base text-gray-700 text-center font-medium">{expandedPhoto.caption}</p>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
