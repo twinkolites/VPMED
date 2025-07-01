@@ -337,7 +337,7 @@ const Services: React.FC = () => {
                 { value: "24hr", label: "Emergency Response", color: "text-emerald-400" },
                 { value: "FDA", label: "Compliant Service", color: "text-blue-400" },
                 { value: "OEM", label: "Certified Parts", color: "text-purple-400" },
-                { value: "15+", label: "Years Experience", color: "text-orange-400" }
+                { value: "30+", label: "Years Experience", color: "text-orange-400" }
               ].map((benefit, index) => (
                 <motion.div 
                   key={benefit.value}
