@@ -1,0 +1,9 @@
+/* VPMED App Styles */
+
+/* Reset any default styles that might interfere */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}

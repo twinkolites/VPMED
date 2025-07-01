@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+/* Premium 2025 Design Variables */
+:root {
+  /* Medical Premium Color Palette */
+  --medical-primary: #10b981; /* Emerald Green */
+  --medical-secondary: #059669;
+  --medical-accent: #ef4444; /* Emergency Red */
+  --medical-neutral: #f8fafc;
+  --medical-dark: #0f172a;
+  --medical-glass: rgba(255, 255, 255, 0.1);
+  
+  /* Premium Gradients */
+  --gradient-medical: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-accent: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  --gradient-text: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  
+  /* Premium Shadows */
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 40px rgba(16, 185, 129, 0.3);
+  --shadow-premium: 0 20px 60px rgba(0, 0, 0, 0.15);
+  
+  /* Typography Scale */
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+
+/* Glassmorphism Effect - Optimized */
+.glass-effect {
+  background: var(--gradient-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-glass);
+  will-change: transform;
+}
+
+/* Neomorphism Effect */
+.neo-morphism {
+  background: #f8fafc;
+  box-shadow: 
+    20px 20px 60px #d1d5db,
+    -20px -20px 60px #ffffff;
+}
+
+/* Premium Glow Effects */
+.glow-green {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+}
+
+.glow-red {
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+}
+
+/* Holographic Effect - Optimized */
+.holographic {
+  background: linear-gradient(
+    45deg,
+    #10b981 0%,
+    #06b6d4 25%,
+    #8b5cf6 50%,
+    #ef4444 75%,
+    #10b981 100%
+  );
+  background-size: 200% 200%;
+  animation: holographic 4s ease-in-out infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  will-change: background-position;
+}
+
+@keyframes holographic {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Floating Animation */
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+/* Parallax Scrolling */
+.parallax-slow {
+  will-change: transform;
+}
+
+/* Premium Text Effects */
+.gradient-text {
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Interactive Elements */
+.interactive-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--shadow-premium);
+}
+
+/* Premium Button Styles */
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+  background: var(--gradient-medical);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  padding: 16px 32px;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-glass);
+}
+
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.btn-premium:hover::before {
+  left: 100%;
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--medical-neutral);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gradient-medical);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--medical-secondary);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .glass-effect {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* Performance Optimizations */
+* {
+  box-sizing: border-box;
+}
+
+/* Reduce animations for better performance */
+@media (prefers-reduced-motion: reduce) {
+  .float,
+  .holographic,
+  .parallax-slow {
+    animation: none;
+  }
+  
+  .interactive-card {
+    transition: none;
+  }
+}
+
+/* GPU acceleration for smooth animations */
+.interactive-card,
+.btn-premium,
+.glass-effect {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Focus Styles */
+*:focus-visible {
+  outline: 2px solid var(--medical-primary);
+  outline-offset: 2px;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--medical-neutral);
+  color: var(--medical-dark);
+  line-height: 1.6;
+}
