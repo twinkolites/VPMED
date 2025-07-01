@@ -17,7 +17,8 @@ import {
   Shield,
   Zap,
   Heart,
-  X
+  X,
+  Camera as PhotoIcon
 } from 'lucide-react';
 import type { GalleryItem } from '../types';
 import { fetchGalleryItems } from '../lib/galleryApi';
@@ -46,12 +47,23 @@ const Gallery: React.FC = () => {
     }
   }
 
-const categories = [
-  { key: 'all', label: 'All Work', icon: <Eye className="w-4 h-4" />, count: galleryItems.length },
-  { key: 'before-after', label: 'Before & After', icon: <Wrench className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'before-after').length },
-  { key: 'equipment', label: 'Equipment Service', icon: <Settings className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'equipment').length },
-  { key: 'work-process', label: 'Work Process', icon: <Activity className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'work-process').length },
-  { key: 'certifications', label: 'Certifications', icon: <Award className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'certifications').length }
+  // Helper function to get category icon similar to GalleryManager
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'before-after': return <Wrench className="w-4 h-4" />;
+      case 'equipment': return <Settings className="w-4 h-4" />;
+      case 'work-process': return <Activity className="w-4 h-4" />;
+      case 'certifications': return <Award className="w-4 h-4" />;
+      default: return <Eye className="w-4 h-4" />;
+    }
+  };
+
+  const categories = [
+    { key: 'all', label: 'All Work', icon: <Eye className="w-4 h-4" />, count: galleryItems.length },
+    { key: 'before-after', label: 'Before & After', icon: <Wrench className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'before-after').length },
+    { key: 'equipment', label: 'Equipment Service', icon: <Settings className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'equipment').length },
+    { key: 'work-process', label: 'Work Process', icon: <Activity className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'work-process').length },
+    { key: 'certifications', label: 'Certifications', icon: <Award className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'certifications').length }
   ]
 
   const filteredItems = galleryItems.filter(item => {
@@ -69,6 +81,225 @@ const categories = [
         className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
       />
     ));
+  };
+
+  // Helper function to render images based on type and category
+  const renderItemImage = (item: GalleryItem) => {
+    const images = item.gallery_images || [];
+    
+    // For before-after category, show before/after comparison if available
+    if (item.category === 'before-after') {
+      const beforeImage = images.find(img => img.image_type === 'before');
+      const afterImage = images.find(img => img.image_type === 'after');
+      
+      if (beforeImage && afterImage) {
+        return (
+          <div className="w-full h-full flex">
+            <div className="flex-1 relative">
+              <img 
+                src={beforeImage.image_url} 
+                alt={beforeImage.caption || `${item.title} - Before`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex-1 relative">
+              <img 
+                src={afterImage.image_url} 
+                alt={afterImage.caption || `${item.title} - After`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+        );
+      }
+    }
+    
+    // For other categories or when before/after not available, show main image or gallery
+    const mainImage = images.find(img => img.image_type === 'main') || images[0];
+    const additionalImages = images.filter(img => img.image_type === 'additional').slice(0, 3);
+    
+    // If we have multiple images for equipment/work-process, show a grid layout
+    if ((item.category === 'equipment' || item.category === 'work-process') && images.length > 1) {
+      const displayImages = [mainImage, ...additionalImages].filter(Boolean).slice(0, 4);
+      
+      if (displayImages.length > 1) {
+        return (
+          <div className="w-full h-full grid grid-cols-2 gap-0.5">
+            {displayImages.map((image, index) => (
+              <div key={index} className="relative overflow-hidden">
+                <img 
+                  src={image.image_url} 
+                  alt={image.caption || item.alt_text || item.title}
+                  className="w-full h-full object-cover"
+                />
+                {index === 3 && images.length > 4 && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">+{images.length - 4}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      }
+    }
+    
+    // Single image display for certifications and single-image items
+    if (mainImage) {
+      return (
+        <img 
+          src={mainImage.image_url} 
+          alt={mainImage.caption || item.alt_text || item.title}
+          className="w-full h-full object-cover"
+        />
+      );
+    }
+    
+    // Fallback to icon if no images available
+    return (
+      <div className="text-4xl sm:text-6xl text-green-600/20">
+        {item.category === 'before-after' && <Wrench />}
+        {item.category === 'equipment' && <Settings />}
+        {item.category === 'work-process' && <Activity />}
+        {item.category === 'certifications' && <Award />}
+      </div>
+    );
+  };
+
+  // Helper function to render images in modal with enhanced layout
+  const renderModalImages = (item: GalleryItem) => {
+    const images = item.gallery_images || [];
+    
+    // For before-after category, show enhanced before/after comparison
+    if (item.category === 'before-after') {
+      const beforeImage = images.find(img => img.image_type === 'before');
+      const afterImage = images.find(img => img.image_type === 'after');
+      
+      if (beforeImage && afterImage) {
+        return (
+          <div className="w-full h-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 h-full gap-1">
+              <div className="relative h-full">
+                <img 
+                  src={beforeImage.image_url} 
+                  alt={beforeImage.caption || `${item.title} - Before`}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-3 left-3 bg-red-500 text-white text-sm px-3 py-1.5 rounded-lg font-bold shadow-lg">
+                  BEFORE
+                </div>
+              </div>
+              <div className="relative h-full">
+                <img 
+                  src={afterImage.image_url} 
+                  alt={afterImage.caption || `${item.title} - After`}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-3 right-3 bg-green-500 text-white text-sm px-3 py-1.5 rounded-lg font-bold shadow-lg">
+                  AFTER
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+    }
+    
+    // For other categories, show enhanced layouts based on category
+    const mainImage = images.find(img => img.image_type === 'main') || images[0];
+    const additionalImages = images.filter(img => img.image_type === 'additional');
+    const allImages = [mainImage, ...additionalImages].filter(Boolean);
+    
+    // Equipment category: Show process grid if multiple images
+    if (item.category === 'equipment' && allImages.length > 1) {
+      const displayImages = allImages.slice(0, 6);
+      return (
+        <div className="w-full h-full">
+          <div className="grid grid-cols-2 sm:grid-cols-3 h-full gap-1">
+            {displayImages.map((image, index) => (
+              <div key={index} className="relative overflow-hidden">
+                <img 
+                  src={image.image_url} 
+                  alt={image.caption || `${item.title} - Step ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded font-bold">
+                  {index + 1}
+                </div>
+              </div>
+            ))}
+          </div>
+          {allImages.length > 6 && (
+            <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
+              +{allImages.length - 6} more
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Work Process category: Show step-by-step process
+    if (item.category === 'work-process' && allImages.length > 1) {
+      const displayImages = allImages.slice(0, 4);
+      return (
+        <div className="w-full h-full">
+          <div className="grid grid-cols-2 h-full gap-1">
+            {displayImages.map((image, index) => (
+              <div key={index} className="relative overflow-hidden">
+                <img 
+                  src={image.image_url} 
+                  alt={image.caption || `${item.title} - Process ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded-lg font-bold">
+                  STEP {index + 1}
+                </div>
+              </div>
+            ))}
+          </div>
+          {allImages.length > 4 && (
+            <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
+              +{allImages.length - 4} more steps
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Certifications: Show with certification badge
+    if (mainImage) {
+      return (
+        <div className="w-full h-full relative">
+          <img 
+            src={mainImage.image_url} 
+            alt={mainImage.caption || item.alt_text || item.title}
+            className="w-full h-full object-cover"
+          />
+          {item.category === 'certifications' && (
+            <div className="absolute top-3 right-3 bg-amber-500 text-white text-sm px-3 py-1.5 rounded-lg font-bold shadow-lg">
+              CERTIFIED
+            </div>
+          )}
+          {additionalImages.length > 0 && (
+            <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
+              +{additionalImages.length} more
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Fallback to enhanced icon display
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-6xl sm:text-8xl text-green-600/20">
+          {item.category === 'before-after' && <Wrench />}
+          {item.category === 'equipment' && <Settings />}
+          {item.category === 'work-process' && <Activity />}
+          {item.category === 'certifications' && <Award />}
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -236,17 +467,33 @@ const categories = [
                   whileHover={{ y: -8 }}
                   className="bg-white rounded-2xl shadow-lg overflow-hidden group border border-gray-200 hover:border-green-300 transition-all duration-300"
                 >
-                  {/* Image Placeholder */}
+                  {/* Image Display */}
                   <div className="h-40 sm:h-48 bg-gradient-to-br from-green-100 to-red-100 flex items-center justify-center relative overflow-hidden">
-                    <div className="text-4xl sm:text-6xl text-green-600/20">
-                      {item.category === 'before-after' && <Wrench />}
-                      {item.category === 'equipment' && <Settings />}
-                      {item.category === 'work-process' && <Activity />}
-                      {item.category === 'certifications' && <Award />}
-                    </div>
+                    {renderItemImage(item)}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                      <Eye className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+                      <button
+                        onClick={() => setSelectedItem(item)}
+                        className="p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all duration-200 hover:scale-110"
+                        title="View Details"
+                      >
+                        <Eye className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+                      </button>
                     </div>
+                    
+                    {/* Category Badge */}
+                    <div className="absolute top-2 left-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold text-white bg-green-600">
+                        {item.category.replace('-', ' ')}
+                      </span>
+                    </div>
+                    
+                    {/* Image Count Badge */}
+                    {item.gallery_images && item.gallery_images.length > 1 && (
+                      <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                        <PhotoIcon className="w-3 h-3" />
+                        {item.gallery_images.length}
+                      </div>
+                    )}
                   </div>
 
                   {/* Content */}
@@ -353,13 +600,8 @@ const categories = [
                   </button>
                 </div>
                 
-                <div className="h-48 sm:h-64 bg-gradient-to-br from-green-100 to-red-100 rounded-lg mb-4 sm:mb-6 flex items-center justify-center">
-                  <div className="text-6xl sm:text-8xl text-green-600/20">
-                    {selectedItem.category === 'before-after' && <Wrench />}
-                    {selectedItem.category === 'equipment' && <Settings />}
-                    {selectedItem.category === 'work-process' && <Activity />}
-                    {selectedItem.category === 'certifications' && <Award />}
-                  </div>
+                <div className="h-48 sm:h-64 bg-gradient-to-br from-green-100 to-red-100 rounded-lg mb-4 sm:mb-6 overflow-hidden">
+                  {renderModalImages(selectedItem)}
                 </div>
 
                 <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">{selectedItem.description}</p>
@@ -395,6 +637,31 @@ const categories = [
                   <div className="bg-green-50 p-3 sm:p-4 rounded-lg">
                     <label className="text-xs sm:text-sm font-medium text-gray-700 block mb-2">Client Testimonial</label>
                     <p className="text-gray-700 italic text-sm sm:text-base">"{selectedItem.testimonial}"</p>
+                  </div>
+                )}
+                
+                {/* Image Information */}
+                {selectedItem.gallery_images && selectedItem.gallery_images.length > 0 && (
+                  <div className="bg-gray-50 p-3 sm:p-4 rounded-lg mt-4">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700 block mb-2">
+                      Images ({selectedItem.gallery_images.length})
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {selectedItem.gallery_images.map((image, index) => (
+                        <div key={image.id || index} className="text-center">
+                          <div className="h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-lg mb-1 overflow-hidden">
+                            <img 
+                              src={image.image_url} 
+                              alt={image.caption || `${selectedItem.title} - ${image.image_type}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <span className="text-xs text-gray-600 capitalize font-medium">
+                            {image.image_type.replace('-', ' ')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
