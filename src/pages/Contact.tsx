@@ -130,7 +130,7 @@ const Contact: React.FC = () => {
                 <div className="text-sm text-gray-400">Certified Parts</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-red-400 mb-2">15+</div>
+                <div className="text-3xl font-bold text-red-400 mb-2">30+</div>
                 <div className="text-sm text-gray-400">Years Experience</div>
               </div>
             </div>
