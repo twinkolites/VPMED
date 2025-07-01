@@ -57,9 +57,11 @@ const GalleryManager: React.FC = () => {
   })
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, setEditingItem] = useState<GalleryItem | null>(null)
+  const [viewingItem, setViewingItem] = useState<GalleryItem | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
   const [dragActive, setDragActive] = useState(false)
+  const [isModalLoading, setIsModalLoading] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const beforeFileInputRef = useRef<HTMLInputElement>(null)
@@ -205,13 +207,44 @@ const GalleryManager: React.FC = () => {
     setUploadedImages([])
     setShowAddModal(false)
     setEditingItem(null)
+    setViewingItem(null)
+    setIsModalLoading(false)
   }
 
-  const handleEdit = (item: GalleryItem) => {
-    setEditingItem(item)
-    setFormData(item)
-    setUploadedImages([]) // Reset images for edit mode
-    setShowAddModal(true)
+  const handleEdit = async (item: GalleryItem) => {
+    if (isModalLoading) return // Prevent multiple clicks
+    
+    setIsModalLoading(true)
+    
+    try {
+      setEditingItem(item)
+      setFormData(item)
+      
+      // Load existing images into the form - optimized for performance
+      const existingImages: UploadedImage[] = []
+      
+      if (item.gallery_images && item.gallery_images.length > 0) {
+        // Only load the first 3 images to avoid performance issues
+        const imagesToLoad = item.gallery_images.slice(0, 3)
+        
+        imagesToLoad.forEach(img => {
+          // Create a minimal file object for existing images
+          const blob = new Blob([''], { type: 'image/jpeg' })
+          const file = new File([blob], 'existing-image.jpg', { type: 'image/jpeg' })
+          
+          existingImages.push({
+            file,
+            preview: img.image_url,
+            type: img.image_type as 'main' | 'before' | 'after'
+          })
+        })
+      }
+      
+      setUploadedImages(existingImages)
+      setShowAddModal(true)
+    } finally {
+      setIsModalLoading(false)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -265,36 +298,113 @@ const GalleryManager: React.FC = () => {
     )
   }
 
+  // Helper function to render images based on type and category (similar to Gallery.tsx)
+  const renderItemImage = (item: GalleryItem) => {
+    const images = item.gallery_images || [];
+    
+    // For before-after category, show before/after comparison if available
+    if (item.category === 'before-after') {
+      const beforeImage = images.find(img => img.image_type === 'before');
+      const afterImage = images.find(img => img.image_type === 'after');
+      
+      if (beforeImage && afterImage) {
+        return (
+          <div className="w-full h-full flex">
+            <div className="flex-1 relative">
+              <img 
+                src={beforeImage.image_url} 
+                alt={beforeImage.caption || `${item.title} - Before`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex-1 relative">
+              <img 
+                src={afterImage.image_url} 
+                alt={afterImage.caption || `${item.title} - After`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+        );
+      }
+    }
+    
+    // For other categories, show main image or gallery grid
+    const mainImage = images.find(img => img.image_type === 'main') || images[0];
+    const additionalImages = images.filter(img => img.image_type === 'additional').slice(0, 3);
+    
+    // If we have multiple images for equipment/work-process, show a grid layout
+    if ((item.category === 'equipment' || item.category === 'work-process') && images.length > 1) {
+      const displayImages = [mainImage, ...additionalImages].filter(Boolean).slice(0, 4);
+      
+      if (displayImages.length > 1) {
+        return (
+          <div className="w-full h-full grid grid-cols-2 gap-0.5">
+            {displayImages.map((image, index) => (
+              <div key={index} className="relative overflow-hidden">
+                <img 
+                  src={image.image_url} 
+                  alt={image.caption || item.alt_text || item.title}
+                  className="w-full h-full object-cover"
+                />
+                {index === 3 && images.length > 4 && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">+{images.length - 4}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      }
+    }
+    
+    // Single image display for certifications and single-image items
+    if (mainImage) {
+      return (
+        <img 
+          src={mainImage.image_url} 
+          alt={mainImage.caption || item.alt_text || item.title}
+          className="w-full h-full object-cover"
+        />
+      );
+    }
+    
+    // Fallback to icon if no images available
+    const CategoryIcon = getCategoryIcon(item.category);
+    return (
+      <div className={`p-3 sm:p-4 rounded-xl ${getCategoryColor(item.category)} bg-opacity-20`}>
+        <CategoryIcon className="h-10 w-10 sm:h-12 sm:w-12 text-emerald-600" />
+      </div>
+    );
+  };
+
   const renderImageUploadArea = (type: 'main' | 'before' | 'after', label: string, inputRef: React.RefObject<HTMLInputElement | null>) => {
     const existingImage = uploadedImages.find(img => img.type === type)
     
     return (
-      <div className="space-y-2">
-        <label className="block text-sm font-semibold text-gray-700">
-          {label} {type === 'main' && '*'}
-        </label>
-        
+      <div className="w-full">
         {existingImage ? (
           <div className="relative">
             <img
               src={existingImage.preview}
               alt={`${label} preview`}
-              className="w-full h-32 object-cover rounded-lg border border-gray-200"
+              className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200"
             />
             <button
               type="button"
               onClick={() => removeImage(type)}
-              className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
             >
-              <XMarkIcon className="h-4 w-4" />
+              <XMarkIcon className="h-3 w-3" />
             </button>
-            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-              {existingImage.file.name}
+            <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded max-w-[80%] truncate">
+              {existingImage.file.name !== 'existing-image.jpg' ? existingImage.file.name : 'Current image'}
             </div>
           </div>
         ) : (
           <div
-            className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors cursor-pointer ${
+            className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors cursor-pointer ${
               dragActive 
                 ? 'border-emerald-400 bg-emerald-50' 
                 : 'border-gray-300 hover:border-emerald-400 hover:bg-emerald-50'
@@ -305,12 +415,11 @@ const GalleryManager: React.FC = () => {
             onDrop={(e) => handleDrop(e, type)}
             onClick={() => inputRef.current?.click()}
           >
-            <CloudArrowUpIcon className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mb-3 sm:mb-4" />
-            <div className="text-xs sm:text-sm text-gray-600 mb-2">
+            <CloudArrowUpIcon className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+            <div className="text-xs text-gray-600 mb-1">
               <span className="font-medium text-emerald-600">Click to upload</span>
-              <span className="hidden sm:inline"> or drag and drop</span>
             </div>
-            <div className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</div>
+            <div className="text-xs text-gray-500">PNG, JPG, GIF</div>
           </div>
         )}
         
@@ -407,19 +516,32 @@ const GalleryManager: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group"
             >
-              {/* Image Placeholder */}
+              {/* Image Display */}
               <div className="h-40 sm:h-48 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-t-2xl flex items-center justify-center relative overflow-hidden border-b border-gray-100">
-                <div className={`p-3 sm:p-4 rounded-xl ${getCategoryColor(item.category)} bg-opacity-20`}>
-                  <CategoryIcon className="h-10 w-10 sm:h-12 sm:w-12 text-emerald-600" />
-                </div>
+                {renderItemImage(item)}
                 <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
                   <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold text-white ${getCategoryColor(item.category)}`}>
                     <span className="hidden sm:inline">{item.category.replace('-', ' ')}</span>
                     <span className="sm:hidden">{item.category.split('-')[0]}</span>
                   </span>
                 </div>
-                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 hidden sm:block sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
+                
+                {/* Image Count Badge */}
+                {item.gallery_images && item.gallery_images.length > 1 && (
+                  <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1 z-10">
+                    <PhotoIcon className="w-3 h-3" />
+                    {item.gallery_images.length}
+                  </div>
+                )}
+                <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 hidden sm:block sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
                   <div className="flex gap-1">
+                    <button
+                      onClick={() => setViewingItem(item)}
+                      className="p-1.5 sm:p-2 bg-white/90 backdrop-blur-sm rounded-lg text-gray-600 hover:text-blue-600 transition-colors"
+                      title="View Details"
+                    >
+                      <EyeIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                    </button>
                     <button
                       onClick={() => handleEdit(item)}
                       className="p-1.5 sm:p-2 bg-white/90 backdrop-blur-sm rounded-lg text-gray-600 hover:text-emerald-600 transition-colors"
@@ -483,6 +605,13 @@ const GalleryManager: React.FC = () => {
                 {/* Mobile Action Buttons */}
                 <div className="flex gap-2 sm:hidden">
                   <button
+                    onClick={() => setViewingItem(item)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                  >
+                    <EyeIcon className="h-4 w-4" />
+                    View
+                  </button>
+                  <button
                     onClick={() => handleEdit(item)}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors text-sm font-medium"
                   >
@@ -523,7 +652,7 @@ const GalleryManager: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto shadow-2xl border border-white/20 mx-4"
+            className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl mx-4"
           >
             <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
@@ -540,8 +669,8 @@ const GalleryManager: React.FC = () => {
 
               <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                 {/* Basic Information */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-4 sm:space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                     {/* Title */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -630,15 +759,26 @@ const GalleryManager: React.FC = () => {
                   </div>
 
                   {/* Image Upload Section */}
-                  <div className="space-y-4 sm:space-y-6">
-                    {/* Main Image */}
-                    {renderImageUploadArea('main', 'Main Image', fileInputRef)}
+                  <div className="space-y-3 sm:space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Images</h3>
+                    
+                    {/* Main Image - Compact */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium text-gray-600">Main Image *</label>
+                      {renderImageUploadArea('main', 'Main Image', fileInputRef)}
+                    </div>
                     
                     {/* Before/After Images - Show only for before-after category */}
                     {formData.category === 'before-after' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        {renderImageUploadArea('before', 'Before Image', beforeFileInputRef)}
-                        {renderImageUploadArea('after', 'After Image', afterFileInputRef)}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-gray-600">Before</label>
+                          {renderImageUploadArea('before', 'Before', beforeFileInputRef)}
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-xs font-medium text-gray-600">After</label>
+                          {renderImageUploadArea('after', 'After', afterFileInputRef)}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -720,11 +860,133 @@ const GalleryManager: React.FC = () => {
                 </div>
               </form>
             </div>
-          </motion.div>
-        </div>
-      )}
-    </div>
-  )
-}
+                      </motion.div>
+          </div>
+        )}
 
-export default GalleryManager 
+        {/* View Details Modal */}
+        {viewingItem && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white/95 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto shadow-2xl border border-white/20 mx-4"
+            >
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900">
+                    Gallery Item Details
+                  </h2>
+                  <button
+                    onClick={() => setViewingItem(null)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </button>
+                </div>
+
+                {/* Image Display */}
+                <div className="h-48 sm:h-64 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg mb-4 sm:mb-6 overflow-hidden">
+                  {renderItemImage(viewingItem)}
+                </div>
+
+                {/* Item Information */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{viewingItem.title}</h3>
+                    <p className="text-gray-600 mb-4">{viewingItem.description}</p>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-semibold text-white ${getCategoryColor(viewingItem.category)}`}>
+                          {viewingItem.category.replace('-', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700">Rating:</span>
+                        {renderStars(viewingItem.rating || 5)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {viewingItem.equipment_type && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Equipment Type</label>
+                        <p className="text-gray-900">{viewingItem.equipment_type}</p>
+                      </div>
+                    )}
+                    {viewingItem.location && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Location</label>
+                        <p className="text-gray-900">{viewingItem.location}</p>
+                      </div>
+                    )}
+                    {viewingItem.service_date && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Service Date</label>
+                        <p className="text-gray-900">{new Date(viewingItem.service_date).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {viewingItem.testimonial && (
+                  <div className="bg-emerald-50 p-4 rounded-lg mb-4 sm:mb-6">
+                    <label className="text-sm font-medium text-gray-700 block mb-2">Client Testimonial</label>
+                    <p className="text-gray-700 italic">"{viewingItem.testimonial}"</p>
+                  </div>
+                )}
+
+                {/* Image Gallery */}
+                {viewingItem.gallery_images && viewingItem.gallery_images.length > 0 && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-3">
+                      Images ({viewingItem.gallery_images.length})
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {viewingItem.gallery_images.map((image, index) => (
+                        <div key={image.id || index} className="text-center">
+                          <div className="h-20 sm:h-24 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-lg mb-2 overflow-hidden">
+                            <img 
+                              src={image.image_url} 
+                              alt={image.caption || `${viewingItem.title} - ${image.image_type}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <span className="text-xs text-gray-600 capitalize font-medium">
+                            {image.image_type.replace('-', ' ')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 mt-6 border-t border-gray-200">
+                  <button
+                    onClick={() => setViewingItem(null)}
+                    className="w-full sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors text-sm sm:text-base order-2 sm:order-1"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleEdit(viewingItem)
+                      setViewingItem(null)
+                    }}
+                    className="w-full sm:flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base order-1 sm:order-2"
+                  >
+                    Edit Item
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </div>
+    )
+  }
+  
+  export default GalleryManager 
