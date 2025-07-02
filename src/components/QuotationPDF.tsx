@@ -1,11 +1,12 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import type { CompletedService } from '../types'
+import robotoFont from '../assets/fonts/Roboto-Regular.ttf'
 
 // Register Roboto font for peso sign support
 Font.register({
   family: 'Roboto',
-  src: '/fonts/Roboto-Regular.ttf',
+  src: robotoFont,
 })
 
 // Traditional business letter styles based on the image
