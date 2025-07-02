@@ -2,11 +2,24 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import type { CompletedService } from '../types'
 
-// Register Roboto font for peso sign support
-Font.register({
-  family: 'Roboto',
-  src: '/src/assets/fonts/Roboto-Regular.ttf',
-})
+// Register fonts for better compatibility with Vercel deployment
+try {
+  Font.register({
+    family: 'Roboto',
+    fonts: [
+      {
+        src: 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu72xKKTU1Kvnz.woff2',
+        fontWeight: 400,
+      },
+      {
+        src: 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4AMP6lbBP.woff2',
+        fontWeight: 700,
+      }
+    ]
+  })
+} catch (error) {
+  console.warn('Font registration failed, using fallback fonts')
+}
 
 // Traditional business letter styles based on the image
 const styles = StyleSheet.create({
@@ -14,7 +27,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     backgroundColor: '#ffffff',
     padding: 40,
-    fontFamily: 'Roboto',
+    fontFamily: 'Roboto, Helvetica, Arial',
     fontSize: 11,
     lineHeight: 1.4,
   },
@@ -37,6 +50,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 30,
     marginBottom: 10,
+    objectFit: 'contain',
   },
   companyDetails: {
     fontSize: 10,
@@ -204,11 +218,17 @@ const styles = StyleSheet.create({
 
 // Helper function to format currency in Philippines peso
 const formatPeso = (amount: number): string => {
-  const formattedAmount = amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  return `\u20B1${formattedAmount}` // Using Unicode escape for peso sign
+  try {
+    const safeAmount = isNaN(amount) ? 0 : amount
+    const formattedAmount = safeAmount.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+    return `₱${formattedAmount}` // Direct peso sign for better compatibility
+  } catch (error) {
+    console.warn('Error formatting peso amount:', error)
+    return `₱${amount || 0}`
+  }
 }
 
 interface QuotationPDFProps {
@@ -216,26 +236,46 @@ interface QuotationPDFProps {
 }
 
 const QuotationPDF: React.FC<QuotationPDFProps> = ({ service }) => {
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+  // Safe date formatting with error handling
+  const getCurrentDate = () => {
+    try {
+      return new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    } catch (error) {
+      return new Date().toDateString()
+    }
+  }
   
-  const validUntil = new Date()
-  validUntil.setDate(validUntil.getDate() + 45)
-  const validUntilFormatted = validUntil.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+  const getValidUntilDate = () => {
+    try {
+      const validUntil = new Date()
+      validUntil.setDate(validUntil.getDate() + 45)
+      return validUntil.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    } catch (error) {
+      const fallback = new Date()
+      fallback.setDate(fallback.getDate() + 45)
+      return fallback.toDateString()
+    }
+  }
   
-  const quotationNumber = service.quotation_number || `QT-${service.id.slice(-6).toUpperCase()}`
+  const currentDate = getCurrentDate()
+  const validUntilFormatted = getValidUntilDate()
+  const quotationNumber = service.quotation_number || `QT-${(service.id || 'DEFAULT').slice(-6).toUpperCase()}`
   
-  // Calculate totals
+  // Calculate totals with safe fallbacks
   const laborCost = service.labor_cost || 0
-  const partsCost = service.parts_used?.reduce((total, part) => 
-    total + (part.quantity * part.cost), 0) || 0
+  const partsCost = service.parts_used?.reduce((total, part) => {
+    const qty = part.quantity || 0
+    const cost = part.cost || 0
+    return total + (qty * cost)
+  }, 0) || 0
   const total = laborCost + partsCost
 
   return (
@@ -245,10 +285,24 @@ const QuotationPDF: React.FC<QuotationPDFProps> = ({ service }) => {
         <View style={styles.headerContainer}>
           {/* Left side - Company Information */}
           <View style={styles.companyInfo}>
-            <Image 
-              style={styles.companyLogo}
-              src="/src/assets/images/vp.png"
-            />
+            <View style={{ 
+              width: 100, 
+              height: 30, 
+              marginBottom: 10,
+              backgroundColor: '#f3f4f6',
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderRadius: 4
+            }}>
+              <Text style={{ 
+                fontSize: 14, 
+                fontWeight: 'bold', 
+                color: '#059669',
+                textAlign: 'center'
+              }}>
+                VPMED
+              </Text>
+            </View>
             <Text style={styles.companyDetails}>
               Medical Equipment{'\n'}
               Repair and Maintenance{'\n'}
@@ -330,22 +384,22 @@ const QuotationPDF: React.FC<QuotationPDFProps> = ({ service }) => {
           </View>
 
           {/* Parts Rows */}
-          {service.parts_used?.map((part, index) => (
-            <View key={part.id || index} style={styles.tableRow}>
+          {service.parts_used?.filter(part => part.name && part.name.trim() !== '').map((part, index) => (
+            <View key={part.id || `part-${index}`} style={styles.tableRow}>
               <Text style={[styles.tableCell, styles.tableCellLeft, styles.colUnit]}>
-                {part.name.split(' ')[0]}
+                {(part.name || 'Part').split(' ')[0]}
               </Text>
               <Text style={[styles.tableCell, styles.tableCellLeft, styles.colDescription]}>
-                {part.name} - {part.description || 'Replacement part for medical equipment'}
+                {part.name || 'Replacement part'} - {part.description || 'Replacement part for medical equipment'}
               </Text>
               <Text style={[styles.tableCell, styles.tableCellCenter, styles.colQty]}>
-                {part.quantity}
+                {part.quantity || 1}
               </Text>
               <Text style={[styles.tableCell, styles.tableCellRight, styles.colUnitPrice]}>
-                {formatPeso(part.cost)}
+                {formatPeso(part.cost || 0)}
               </Text>
               <Text style={[styles.tableCell, styles.tableCellRight, styles.colTotalPrice]}>
-                {formatPeso(part.quantity * part.cost)}
+                {formatPeso((part.quantity || 1) * (part.cost || 0))}
               </Text>
             </View>
           ))}
