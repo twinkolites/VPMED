@@ -2,9 +2,11 @@ import { supabase } from './supabase'
 import type { CompletedService, PartUsed } from '../types'
 
 export interface CreateServiceData {
+  quotation_number?: string
   title: string
   description: string
   equipment_type: string
+  service_type: 'repair' | 'checkup' | 'maintenance' | 'installation' | 'calibration'
   client_name: string
   location: string
   service_date: string
@@ -55,9 +57,11 @@ export async function createCompletedService(serviceData: CreateServiceData): Pr
     const { data: service, error: serviceError } = await supabase
       .from('completed_services')
       .insert([{
+        quotation_number: serviceData.quotation_number,
         title: serviceData.title,
         description: serviceData.description,
         equipment_type: serviceData.equipment_type,
+        service_type: serviceData.service_type,
         client_name: serviceData.client_name,
         location: serviceData.location,
         service_date: serviceData.service_date,
@@ -68,7 +72,8 @@ export async function createCompletedService(serviceData: CreateServiceData): Pr
         total_cost: totalCost,
         technician: serviceData.technician,
         notes: serviceData.notes,
-        status: 'completed',
+        status: 'approved',
+        document_status: 'quotation',
         payment_status: 'pending'
       }])
       .select()
@@ -163,9 +168,11 @@ export async function updateCompletedServiceWithParts(
     const { data: service, error: serviceError } = await supabase
       .from('completed_services')
       .update({
+        quotation_number: serviceData.quotation_number,
         title: serviceData.title,
         description: serviceData.description,
         equipment_type: serviceData.equipment_type,
+        service_type: serviceData.service_type,
         client_name: serviceData.client_name,
         location: serviceData.location,
         service_date: serviceData.service_date,

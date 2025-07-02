@@ -92,14 +92,17 @@ export interface PartUsed {
   name: string;
   quantity: number;
   cost: number;
+  description?: string;
   created_at?: string;
 }
 
 export interface CompletedService {
   id: string;
+  quotation_number?: string;
   title: string;
   description: string;
   equipment_type: string;
+  service_type: 'repair' | 'checkup' | 'maintenance' | 'installation' | 'calibration';
   client_name: string;
   location: string;
   service_date: string;
@@ -108,7 +111,8 @@ export interface CompletedService {
   service_fee: number;
   labor_cost: number;
   total_cost: number;
-  status: 'completed' | 'pending' | 'cancelled';
+  status: 'approved' | 'in_progress' | 'completed' | 'cancelled';
+  document_status: 'quotation' | 'invoiced';
   payment_status: 'paid' | 'pending' | 'overdue';
   technician: string;
   notes?: string;

@@ -12,6 +12,7 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-scroll-area": "^1.2.9",
+    "@react-pdf/renderer": "^4.3.0",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.50.0",
@@ -23,7 +24,9 @@
     "lucide-react": "^0.520.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-image-crop": "^11.0.10",
     "react-intersection-observer": "^9.16.0",
+    "react-pdf": "^10.0.1",
     "react-router-dom": "^7.6.2",
     "tailwind-merge": "^3.3.1"
   },
