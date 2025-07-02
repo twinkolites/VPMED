@@ -23,8 +23,7 @@ import {
   Users,
   TrendingUp,
   Heart,
-  Gauge,
-  Cog
+  Gauge
 } from 'lucide-react';
 import type { ServiceItem } from '../types';
 
@@ -52,51 +51,26 @@ const services: ServiceItem[] = [
     category: 'repair',
     equipmentTypes: ['Surgical Tables', 'Anesthesia Machines', 'Electrosurgical Units', 'Surgical Lights', 'Laparoscopic Equipment']
   },
-
-  // Preventive Maintenance
   {
-    id: 'preventive-maintenance',
-    title: 'Comprehensive Preventive Maintenance',
-    description: 'Scheduled maintenance programs designed to prevent equipment failures, extend operational life, and ensure regulatory compliance.',
-    category: 'maintenance',
-    equipmentTypes: ['All Medical Equipment', 'HVAC Systems', 'Electrical Systems', 'Sterilization Equipment']
+    id: 'laboratory-equipment-repair',
+    title: 'Laboratory Equipment Repair',
+    description: 'Specialized repair services for clinical laboratory equipment ensuring accurate test results and regulatory compliance.',
+    category: 'repair',
+    equipmentTypes: ['Analyzers', 'Centrifuges', 'Microscopes', 'Incubators', 'Spectrophotometers']
   },
   {
-    id: 'biomedical-calibration',
-    title: 'Biomedical Equipment Calibration',
-    description: 'Precision calibration services ensuring accuracy and reliability of medical measurements critical for patient diagnosis and treatment.',
-    category: 'maintenance',
-    equipmentTypes: ['Patient Monitors', 'Blood Pressure Devices', 'Thermometers', 'Pulse Oximeters', 'ECG Machines']
+    id: 'patient-monitoring-repair',
+    title: 'Patient Monitoring Equipment Repair',
+    description: 'Expert repair services for patient monitoring systems ensuring continuous and accurate patient data collection.',
+    category: 'repair',
+    equipmentTypes: ['Vital Signs Monitors', 'Telemetry Systems', 'Pulse Oximeters', 'ECG Machines', 'Blood Pressure Monitors']
   },
   {
-    id: 'sterilization-maintenance',
-    title: 'Sterilization System Maintenance',
-    description: 'Specialized maintenance for infection control equipment ensuring proper sterilization cycles and regulatory compliance.',
-    category: 'maintenance',
-    equipmentTypes: ['Autoclaves', 'ETO Sterilizers', 'Plasma Sterilizers', 'Washer-Disinfectors']
-  },
-
-  // Safety & Compliance
-  {
-    id: 'safety-inspection',
-    title: 'Comprehensive Safety Inspections',
-    description: 'Thorough safety evaluations and electrical safety testing to ensure equipment meets healthcare safety standards and regulatory requirements.',
-    category: 'inspection',
-    equipmentTypes: ['All Electrical Equipment', 'Patient Care Equipment', 'Life Support Systems']
-  },
-  {
-    id: 'compliance-testing',
-    title: 'Regulatory Compliance Testing',
-    description: 'FDA and Joint Commission compliance testing ensuring your medical equipment meets all regulatory standards and accreditation requirements.',
-    category: 'inspection',
-    equipmentTypes: ['FDA Regulated Devices', 'Life Support Equipment', 'Diagnostic Equipment']
-  },
-  {
-    id: 'performance-verification',
-    title: 'Performance Verification Testing',
-    description: 'Comprehensive performance testing to verify equipment operates within manufacturer specifications and clinical requirements.',
-    category: 'inspection',
-    equipmentTypes: ['Diagnostic Equipment', 'Therapeutic Devices', 'Monitoring Systems']
+    id: 'respiratory-equipment-repair',
+    title: 'Respiratory Equipment Repair',
+    description: 'Critical repair services for respiratory care equipment ensuring optimal patient ventilation and oxygen delivery.',
+    category: 'repair',
+    equipmentTypes: ['Ventilators', 'CPAP Machines', 'Oxygen Concentrators', 'Nebulizers', 'Anesthesia Machines']
   }
 ];
 
@@ -114,20 +88,6 @@ const serviceCategories = [
     icon: <Wrench className="w-4 h-4 sm:w-5 sm:h-5" />,
     count: services.filter(s => s.category === 'repair').length,
     color: 'red'
-  },
-  { 
-    key: 'maintenance', 
-    label: 'Preventive Maintenance', 
-    icon: <Cog className="w-4 h-4 sm:w-5 sm:h-5" />,
-    count: services.filter(s => s.category === 'maintenance').length,
-    color: 'blue'
-  },
-  { 
-    key: 'inspection', 
-    label: 'Safety & Compliance', 
-    icon: <Shield className="w-4 h-4 sm:w-5 sm:h-5" />,
-    count: services.filter(s => s.category === 'inspection').length,
-    color: 'purple'
   }
 ];
 
@@ -217,8 +177,6 @@ const Services: React.FC = () => {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'repair': return <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />;
-      case 'maintenance': return <Cog className="w-5 h-5 sm:w-6 sm:h-6" />;
-      case 'inspection': return <Shield className="w-5 h-5 sm:w-6 sm:h-6" />;
       default: return <Settings className="w-5 h-5 sm:w-6 sm:h-6" />;
     }
   };
@@ -226,8 +184,6 @@ const Services: React.FC = () => {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'repair': return 'from-red-500 to-red-600';
-      case 'maintenance': return 'from-blue-500 to-blue-600';
-      case 'inspection': return 'from-purple-500 to-purple-600';
       default: return 'from-emerald-500 to-emerald-600';
     }
   };
@@ -337,7 +293,7 @@ const Services: React.FC = () => {
                 { value: "24hr", label: "Emergency Response", color: "text-emerald-400" },
                 { value: "FDA", label: "Compliant Service", color: "text-blue-400" },
                 { value: "OEM", label: "Certified Parts", color: "text-purple-400" },
-                { value: "30+", label: "Years Experience", color: "text-orange-400" }
+                { value: "15+", label: "Years Experience", color: "text-orange-400" }
               ].map((benefit, index) => (
                 <motion.div 
                   key={benefit.value}
