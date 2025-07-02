@@ -2,6 +2,7 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import type { CompletedService } from '../types'
 import robotoFont from '../assets/fonts/Roboto-Regular.ttf'
+import vpLogo from '../assets/images/vp.png';
 
 // Register Roboto font for peso sign support
 Font.register({
@@ -248,7 +249,7 @@ const QuotationPDF: React.FC<QuotationPDFProps> = ({ service }) => {
           <View style={styles.companyInfo}>
             <Image 
               style={styles.companyLogo}
-              src="/src/assets/images/vp.png"
+              src={vpLogo}
             />
             <Text style={styles.companyDetails}>
               Medical Equipment{'\n'}
@@ -365,8 +366,7 @@ const QuotationPDF: React.FC<QuotationPDFProps> = ({ service }) => {
         {/* Terms and Conditions */}
         <View style={styles.termsSection}>
           <Text style={styles.termsText}>
-            Unit are under warranty of (12) months, if the unit is broken, no warranty. But when the unit is good appearance 
-            but does not work, we replace. We also offer repair of Medical / Hospital Equipment, and if you have question 
+            we replace. We also offer repair of Medical / Hospital Equipment, and if you have question 
             concerning this quotation, please contact Ms. Vivian Onate or Email us @vannaonate@gmail.com
           </Text>
         </View>
