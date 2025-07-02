@@ -2,7 +2,7 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import type { CompletedService } from '../types'
 
-// Register fonts for better compatibility with Vercel deployment
+// Register Roboto font for @react-pdf/renderer (Google Fonts CDN)
 try {
   Font.register({
     family: 'Roboto',
@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     backgroundColor: '#ffffff',
     padding: 40,
-    fontFamily: 'Roboto, Helvetica, Arial',
+    fontFamily: 'Roboto',
     fontSize: 11,
     lineHeight: 1.4,
   },
