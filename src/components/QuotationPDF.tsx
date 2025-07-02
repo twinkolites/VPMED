@@ -5,7 +5,7 @@ import type { CompletedService } from '../types'
 // Register Roboto font for peso sign support
 Font.register({
   family: 'Roboto',
-  src: '/src/assets/fonts/Roboto-Regular.ttf',
+  src: '/fonts/Roboto-Regular.ttf',
 })
 
 // Traditional business letter styles based on the image
