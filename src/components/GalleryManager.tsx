@@ -1,5 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop'
+import type { Crop, PixelCrop } from 'react-image-crop'
+import 'react-image-crop/dist/ReactCrop.css'
 import {
   PlusIcon,
   PhotoIcon,
@@ -16,6 +19,8 @@ import {
   EyeIcon,
   CloudArrowUpIcon,
   DocumentIcon,
+  ScissorsIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import type { GalleryItem } from '../types'
@@ -39,6 +44,14 @@ interface UploadedImage {
   file: File;
   preview: string;
   type: 'main' | 'before' | 'after';
+  cropped?: boolean;
+}
+
+interface CropModalState {
+  isOpen: boolean;
+  imageUrl: string;
+  imageType: 'main' | 'before' | 'after';
+  originalFile: File;
 }
 
 const GalleryManager: React.FC = () => {
@@ -62,10 +75,19 @@ const GalleryManager: React.FC = () => {
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
   const [dragActive, setDragActive] = useState(false)
   const [isModalLoading, setIsModalLoading] = useState(false)
+  const [cropModal, setCropModal] = useState<CropModalState>({
+    isOpen: false,
+    imageUrl: '',
+    imageType: 'main',
+    originalFile: new File([], '')
+  })
+  const [crop, setCrop] = useState<Crop>()
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>()
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const beforeFileInputRef = useRef<HTMLInputElement>(null)
   const afterFileInputRef = useRef<HTMLInputElement>(null)
+  const cropImageRef = useRef<HTMLImageElement>(null)
   
   const [formData, setFormData] = useState<Partial<GalleryItem>>({
     title: '',
@@ -107,6 +129,60 @@ const GalleryManager: React.FC = () => {
     }))
   }
 
+  // Cropping utility functions
+  function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<Blob> {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+
+    if (!ctx) {
+      throw new Error('No 2d context')
+    }
+
+    const scaleX = image.naturalWidth / image.width
+    const scaleY = image.naturalHeight / image.height
+
+    canvas.width = crop.width
+    canvas.height = crop.height
+
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height
+    )
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob)
+        }
+      }, 'image/jpeg', 0.95)
+    })
+  }
+
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget
+    const crop = centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 90,
+        },
+        1,
+        width,
+        height
+      ),
+      width,
+      height
+    )
+    setCrop(crop)
+  }, [])
+
   const handleImageUpload = (files: FileList | null, type: 'main' | 'before' | 'after' = 'main') => {
     if (!files) return
 
@@ -117,12 +193,62 @@ const GalleryManager: React.FC = () => {
           const preview = e.target?.result as string
           setUploadedImages(prev => [
             ...prev.filter(img => img.type !== type), // Remove existing image of same type
-            { file, preview, type }
+            { file, preview, type, cropped: false }
           ])
         }
         reader.readAsDataURL(file)
       }
     })
+  }
+
+  const openCropModal = (imageUrl: string, imageType: 'main' | 'before' | 'after', originalFile: File) => {
+    setCropModal({
+      isOpen: true,
+      imageUrl,
+      imageType,
+      originalFile
+    })
+  }
+
+  const closeCropModal = () => {
+    setCropModal({
+      isOpen: false,
+      imageUrl: '',
+      imageType: 'main',
+      originalFile: new File([], '')
+    })
+    setCrop(undefined)
+    setCompletedCrop(undefined)
+  }
+
+  const applyCrop = async () => {
+    if (!completedCrop || !cropImageRef.current) return
+
+    try {
+      const croppedBlob = await getCroppedImg(cropImageRef.current, completedCrop)
+      const croppedFile = new File([croppedBlob], cropModal.originalFile.name, {
+        type: 'image/jpeg'
+      })
+      
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const croppedPreview = e.target?.result as string
+        setUploadedImages(prev => [
+          ...prev.filter(img => img.type !== cropModal.imageType),
+          { 
+            file: croppedFile, 
+            preview: croppedPreview, 
+            type: cropModal.imageType,
+            cropped: true 
+          }
+        ])
+      }
+      reader.readAsDataURL(croppedFile)
+      
+      closeCropModal()
+    } catch (error) {
+      console.error('Error cropping image:', error)
+    }
   }
 
   const handleDrag = (e: React.DragEvent) => {
@@ -235,7 +361,8 @@ const GalleryManager: React.FC = () => {
           existingImages.push({
             file,
             preview: img.image_url,
-            type: img.image_type as 'main' | 'before' | 'after'
+            type: img.image_type as 'main' | 'before' | 'after',
+            cropped: false
           })
         })
       }
@@ -391,14 +518,26 @@ const GalleryManager: React.FC = () => {
               alt={`${label} preview`}
               className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200"
             />
-            <button
-              type="button"
-              onClick={() => removeImage(type)}
-              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
-            >
-              <XMarkIcon className="h-3 w-3" />
-            </button>
-            <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded max-w-[80%] truncate">
+            <div className="absolute top-1 right-1 flex gap-1">
+              <button
+                type="button"
+                onClick={() => openCropModal(existingImage.preview, type, existingImage.file)}
+                className="p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors z-10"
+                title="Crop Image"
+              >
+                <ScissorsIcon className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => removeImage(type)}
+                className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                title="Remove Image"
+              >
+                <XMarkIcon className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded max-w-[70%] truncate flex items-center gap-1">
+              {existingImage.cropped && <CheckIcon className="h-3 w-3 text-green-400" />}
               {existingImage.file.name !== 'existing-image.jpg' ? existingImage.file.name : 'Current image'}
             </div>
           </div>
@@ -979,6 +1118,77 @@ const GalleryManager: React.FC = () => {
                     className="w-full sm:flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base order-1 sm:order-2"
                   >
                     Edit Item
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Crop Modal */}
+        {cropModal.isOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl mx-4"
+            >
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900">
+                    Crop Image - {cropModal.imageType.charAt(0).toUpperCase() + cropModal.imageType.slice(1)}
+                  </h3>
+                  <button
+                    onClick={closeCropModal}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </button>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 mb-4 max-h-[60vh] overflow-auto flex items-center justify-center">
+                  <ReactCrop
+                    crop={crop}
+                    onChange={(c) => setCrop(c)}
+                    onComplete={(c) => setCompletedCrop(c)}
+                    aspect={undefined}
+                    minWidth={50}
+                    minHeight={50}
+                    className="max-w-full max-h-full"
+                  >
+                    <img
+                      ref={cropImageRef}
+                      src={cropModal.imageUrl}
+                      alt="Crop preview"
+                      onLoad={onImageLoad}
+                      className="max-w-full max-h-full object-contain"
+                      style={{ maxHeight: '50vh' }}
+                    />
+                  </ReactCrop>
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded-lg mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>How to crop:</strong> Drag the corners and edges of the selection box to adjust the crop area. 
+                    The cropped image will maintain its original quality.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={closeCropModal}
+                    className="w-full sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors text-sm sm:text-base"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={applyCrop}
+                    disabled={!completedCrop}
+                    className="w-full sm:flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base disabled:cursor-not-allowed"
+                  >
+                    Apply Crop
                   </button>
                 </div>
               </div>
