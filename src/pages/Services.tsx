@@ -284,16 +284,14 @@ const Services: React.FC = () => {
             
             {/* Enhanced Key Benefits - Mobile Optimized */}
             <motion.div 
-              className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mt-8 sm:mt-12"
+              className="grid grid-cols-2 md:grid-cols-2 gap-2 sm:gap-6 mt-8 sm:mt-12"
               variants={containerVariants}
               initial="hidden"
               animate="visible"
             >
               {[
-                { value: "24hr", label: "Emergency Response", color: "text-emerald-400" },
-                { value: "FDA", label: "Compliant Service", color: "text-blue-400" },
                 { value: "OEM", label: "Certified Parts", color: "text-purple-400" },
-                { value: "15+", label: "Years Experience", color: "text-orange-400" }
+                { value: "30+", label: "Years Experience", color: "text-orange-400" }
               ].map((benefit, index) => (
                 <motion.div 
                   key={benefit.value}
