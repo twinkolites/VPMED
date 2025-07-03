@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { GalleryItem } from '../types';
 import { fetchGalleryItems } from '../lib/galleryApi';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Gallery: React.FC = () => {
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([])
@@ -31,6 +32,9 @@ const Gallery: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
   const [expandedPhoto, setExpandedPhoto] = useState<{ url: string; caption: string } | null>(null);
+
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // Load gallery items on component mount
   useEffect(() => {
@@ -48,6 +52,22 @@ const Gallery: React.FC = () => {
       setLoading(false)
     }
   }
+
+  // Effect to open specific modal if ID is present in URL
+  useEffect(() => {
+    if (!loading && galleryItems.length > 0) {
+      const params = new URLSearchParams(location.search);
+      const itemId = params.get('id');
+      if (itemId) {
+        const itemToOpen = galleryItems.find(item => item.id === itemId);
+        if (itemToOpen) {
+          setSelectedItem(itemToOpen);
+          // Clear the ID from the URL to prevent re-opening on refresh
+          navigate(location.pathname, { replace: true });
+        }
+      }
+    }
+  }, [loading, galleryItems, location, navigate]);
 
   // Helper function to get category icon similar to GalleryManager
   const getCategoryIcon = (category: string) => {

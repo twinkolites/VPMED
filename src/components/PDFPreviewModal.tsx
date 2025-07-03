@@ -4,6 +4,11 @@ import { pdf } from '@react-pdf/renderer'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 import QuotationPDF from './QuotationPDF'
+import CheckupPDF from './CheckupPDF'
+import InstallationPDF from './InstallationPDF'
+import CalibrationPDF from './CalibrationPDF'
+import MaintenancePDF from './MaintenancePDF'
+
 import type { CompletedService } from '../types'
 
 // Set up PDF.js worker - fixed CORS issue
@@ -25,12 +30,29 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ service, isOpen, onCl
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
+  const getPDFComponent = useCallback(() => {
+    switch (service.service_type) {
+      case 'checkup':
+        return <CheckupPDF service={service} />
+      case 'repair':
+        return <QuotationPDF service={service} />
+      case 'installation':
+        return <InstallationPDF service={service} />
+      case 'calibration':
+        return <CalibrationPDF service={service} />
+      case 'maintenance':
+        return <MaintenancePDF service={service} />
+      default:
+        return <QuotationPDF service={service} />
+    }
+  }, [service])
+
   const generatePDF = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
       
-      const blob = await pdf(<QuotationPDF service={service} />).toBlob()
+      const blob = await pdf(getPDFComponent()).toBlob()
       const url = URL.createObjectURL(blob)
       setPdfUrl(url)
     } catch (err) {
@@ -39,7 +61,7 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ service, isOpen, onCl
     } finally {
       setLoading(false)
     }
-  }, [service])
+  }, [service, getPDFComponent])
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
@@ -48,11 +70,33 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ service, isOpen, onCl
 
   const downloadPDF = async () => {
     try {
-      const blob = await pdf(<QuotationPDF service={service} />).toBlob()
+      const blob = await pdf(getPDFComponent()).toBlob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `VPMED_Quotation_${service.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+      
+      let filenamePrefix = 'VPMED_Document'
+      switch (service.service_type) {
+        case 'checkup':
+          filenamePrefix = 'VPMED_CheckupReport'
+          break
+        case 'repair':
+          filenamePrefix = 'VPMED_Quotation'
+          break
+        case 'installation':
+          filenamePrefix = 'VPMED_InstallationReport'
+          break
+        case 'calibration':
+          filenamePrefix = 'VPMED_CalibrationReport'
+          break
+        case 'maintenance':
+          filenamePrefix = 'VPMED_MaintenanceReport'
+          break
+        default:
+          filenamePrefix = 'VPMED_Quotation'
+      }
+
+      link.download = `${filenamePrefix}_${service.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -64,10 +108,10 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ service, isOpen, onCl
 
   // Generate PDF when modal opens
   React.useEffect(() => {
-    if (isOpen && !pdfUrl) {
+    if (isOpen) {
       generatePDF()
     }
-  }, [isOpen, pdfUrl, generatePDF])
+  }, [isOpen, generatePDF]) // Regenerate PDF if service or service type changes
 
   // Cleanup URL when modal closes
   React.useEffect(() => {
@@ -85,7 +129,14 @@ const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({ service, isOpen, onCl
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-full max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Quotation Preview</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            {service.service_type === 'checkup' ? 'Equipment Check-Up Report'
+              : service.service_type === 'repair' ? 'Repair Service Report'
+                : service.service_type === 'installation' ? 'Installation Report'
+                  : service.service_type === 'calibration' ? 'Calibration Report'
+                    : service.service_type === 'maintenance' ? 'Maintenance Report'
+                      : 'Quotation Preview'}
+          </h2>
           <div className="flex items-center gap-3">
             {pdfUrl && (
               <>

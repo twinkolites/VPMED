@@ -35,6 +35,7 @@ import {
 } from '../lib/completedServicesApi'
 import QuotationPDF from './QuotationPDF'
 import PDFPreviewModal from './PDFPreviewModal'
+import ServiceTypeSelectionModal from './ServiceTypeSelectionModal'
 
 const CompletedServices: React.FC = () => {
   const [services, setServices] = useState<CompletedService[]>([])
@@ -58,6 +59,65 @@ const CompletedServices: React.FC = () => {
   const [deletingService, setDeletingService] = useState<CompletedService | null>(null)
   const [showPDFPreview, setShowPDFPreview] = useState(false)
   const [previewService, setPreviewService] = useState<CompletedService | null>(null)
+  const [showServiceTypeSelectionModal, setShowServiceTypeSelectionModal] = useState(false)
+
+  // Helper function to get dynamic text based on service type
+  const getDynamicText = (field: string, type: string, isPlaceholder: boolean = false) => {
+    const texts: { [key: string]: { [key: string]: { label: string; placeholder: string } } } = {
+      title: {
+        repair: { label: 'Repair Title', placeholder: 'e.g., Hospital Bed Hydraulic Repair' },
+        checkup: { label: 'Checkup Title', placeholder: 'e.g., Annual Equipment Checkup' },
+        maintenance: { label: 'Maintenance Title', placeholder: 'e.g., X-Ray Machine Preventive Maintenance' },
+        installation: { label: 'Installation Title', placeholder: 'e.g., MRI Machine Installation' },
+        calibration: { label: 'Calibration Title', placeholder: 'e.g., Defibrillator Calibration' },
+        default: { label: 'Service Title', placeholder: 'e.g., General Service' },
+      },
+      description: {
+        repair: { label: 'Repair Description', placeholder: 'Detailed explanation of the repair performed...' },
+        checkup: { label: 'Inspection Findings', placeholder: 'Summarize the equipment condition and findings...' },
+        maintenance: { label: 'Maintenance Details', placeholder: 'Details of preventive maintenance tasks performed...' },
+        installation: { label: 'Installation Scope', placeholder: 'Scope of the installation service...' },
+        calibration: { label: 'Calibration Details', placeholder: 'Specifics of the calibration process...' },
+        default: { label: 'Description', placeholder: 'Detailed description of the service performed...' },
+      },
+      equipment_type: {
+        default: { label: 'Equipment Type', placeholder: 'e.g., Hospital Bed, X-Ray Machine' },
+      },
+      client_name: {
+        default: { label: 'Client Name', placeholder: 'e.g., St. Mary\'s Medical Center' },
+      },
+      location: {
+        default: { label: 'Location', placeholder: 'e.g., Room 204, ICU Wing' },
+      },
+      technician: {
+        default: { label: 'Technician', placeholder: 'e.g., John Smith' },
+      },
+      service_fee: {
+        default: { label: 'Service Fee (₱)', placeholder: '' },
+      },
+      labor_cost: {
+        default: { label: 'Labor Cost (₱)', placeholder: '' },
+      },
+      notes: {
+        repair: { label: 'Additional Notes', placeholder: 'Any additional notes about the repair...' },
+        checkup: { label: 'Recommendations/Notes', placeholder: 'Inspection findings, recommendations, equipment condition...' },
+        maintenance: { label: 'Notes', placeholder: 'Any specific observations or future recommendations...' },
+        installation: { label: 'Notes', placeholder: 'Pre-installation checks, post-installation verification...' },
+        calibration: { label: 'Notes', placeholder: 'Calibration results, next calibration date...' },
+        default: { label: 'Additional Notes', placeholder: 'Any additional notes...' },
+      },
+    }
+
+    const fieldTexts = texts[field]?.[type] || texts[field]?.default
+    if (!fieldTexts) return ''
+
+    return isPlaceholder ? fieldTexts.placeholder : fieldTexts.label
+  }
+
+  // Function to determine if Parts Used section should be shown
+  const shouldShowPartsSection = (serviceType: string) => {
+    return serviceType !== 'checkup' && serviceType !== 'calibration'
+  }
 
   // Form state for new service
   const [formData, setFormData] = useState({
@@ -393,6 +453,11 @@ const CompletedServices: React.FC = () => {
     }
   }
 
+  const handleSelectServiceType = (type: string) => {
+    setFormData(prev => ({ ...prev, service_type: type }))
+    setShowAddModal(true)
+  }
+
   if (loading) {
     return (
       <div className="p-4 sm:p-6 flex items-center justify-center min-h-96">
@@ -587,6 +652,20 @@ const CompletedServices: React.FC = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                       <h4 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{service.title}</h4>
                       <div className="flex flex-wrap gap-2">
+                        {/* Service Type Badge */}
+                        <span className={`inline-flex px-2 py-1 text-xs font-bold rounded-full self-start ${
+                            service.service_type === 'repair' ? 'bg-red-100 text-red-800 border border-red-200'
+                            : service.service_type === 'checkup' ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                            : service.service_type === 'installation' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                            : service.service_type === 'calibration' ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                            : 'bg-gray-100 text-gray-800 border border-gray-200'
+                        }`}>
+                          {service.service_type === 'repair' ? '🔧 Repair'
+                          : service.service_type === 'checkup' ? '🩺 Checkup'
+                          : service.service_type === 'installation' ? '🔌 Installation'
+                          : service.service_type === 'calibration' ? '📏 Calibration'
+                          : service.service_type}
+                        </span>
                         {/* Service Status Badge */}
                         <span className={`inline-flex px-2 py-1 text-xs font-bold rounded-full self-start ${getStatusColor(service.status)}`}>
                           🔧 {service.status}
@@ -714,160 +793,160 @@ const CompletedServices: React.FC = () => {
         )}
       </motion.div>
 
-                    {/* Add Service Modal */}
-              <AnimatePresence>
-                {showAddModal && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-                  >
-                    <motion.div
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.9, opacity: 0 }}
-                      className="bg-white/90 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto border border-white/20 shadow-2xl mx-4"
-                    >
-                      <div className="px-4 sm:px-6 py-4 border-b border-gray-200/60 flex items-center justify-between backdrop-blur-sm">
-                        <div className="flex items-center gap-3">
-                          <h2 className="text-lg sm:text-xl font-bold text-gray-900">Create Service Quotation</h2>
-                          {hasSavedData() && (
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded-full border border-orange-200">
-                                📝 Draft Saved
-                              </span>
-                              <button
-                                onClick={() => {
-                                  clearSavedFormData()
-                                  const resetFormData = {
-                                    quotation_number: '',
-                                    title: '',
-                                    description: '',
-                                    equipment_type: '',
-                                    service_type: 'repair',
-                                    client_name: '',
-                                    location: '',
-                                    service_date: '',
-                                    completion_date: '',
-                                    duration: 0,
-                                    service_fee: 0,
-                                    technician: '',
-                                    parts_used: [{ name: '', quantity: 1, cost: 0, description: '' }],
-                                    labor_cost: 0,
-                                    notes: ''
-                                  }
-                                  setFormData(resetFormData)
-                                }}
-                                className="text-orange-600 hover:text-orange-700 text-xs font-semibold bg-orange-50 hover:bg-orange-100 px-2 py-1 rounded-lg transition-all border border-orange-200 hover:border-orange-300"
-                                title="Clear saved draft"
-                              >
-                                Clear Draft
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => setShowAddModal(false)}
-                          className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-xl transition-all"
-                        >
-                          <XMarkIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                      
-                      <div className="p-4 sm:p-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Quotation Number</label>
-                              <input
-                                type="text"
-                                value={formData.quotation_number}
-                                onChange={(e) => setFormData({...formData, quotation_number: e.target.value})}
-                                className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                                placeholder="e.g., Q-2024-001"
-                              />
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Title</label>
-                              <input
-                                type="text"
-                                value={formData.title}
-                                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                                placeholder="e.g., Hospital Bed Hydraulic Repair"
-                              />
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Equipment Type</label>
-                              <input
-                                type="text"
-                                value={formData.equipment_type}
-                                onChange={(e) => setFormData({...formData, equipment_type: e.target.value})}
-                                className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                                placeholder="e.g., Hospital Bed, IV Stand"
-                              />
-                            </div>
+      {/* Add Service Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white/90 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto border border-white/20 shadow-2xl mx-4"
+            >
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200/60 flex items-center justify-between backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">Create Service Quotation</h2>
+                  {hasSavedData() && (
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded-full border border-orange-200">
+                        📝 Draft Saved
+                      </span>
+                      <button
+                        onClick={() => {
+                          clearSavedFormData()
+                          const resetFormData = {
+                            quotation_number: '',
+                            title: '',
+                            description: '',
+                            equipment_type: '',
+                            service_type: 'repair',
+                            client_name: '',
+                            location: '',
+                            service_date: '',
+                            completion_date: '',
+                            duration: 0,
+                            service_fee: 0,
+                            technician: '',
+                            parts_used: [{ name: '', quantity: 1, cost: 0, description: '' }],
+                            labor_cost: 0,
+                            notes: ''
+                          }
+                          setFormData(resetFormData)
+                        }}
+                        className="text-orange-600 hover:text-orange-700 text-xs font-semibold bg-orange-50 hover:bg-orange-100 px-2 py-1 rounded-lg transition-all border border-orange-200 hover:border-orange-300"
+                        title="Clear saved draft"
+                      >
+                        Clear Draft
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-xl transition-all"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="p-4 sm:p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Quotation Number</label>
+                      <input
+                        type="text"
+                        value={formData.quotation_number}
+                        onChange={(e) => setFormData({...formData, quotation_number: e.target.value})}
+                        className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                        placeholder="e.g., Q-2024-001"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('title', formData.service_type)}</label>
+                      <input
+                        type="text"
+                        value={formData.title}
+                        onChange={(e) => setFormData({...formData, title: e.target.value})}
+                        className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                        placeholder={getDynamicText('title', formData.service_type, true)}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('equipment_type', formData.service_type)}</label>
+                      <input
+                        type="text"
+                        value={formData.equipment_type}
+                        onChange={(e) => setFormData({...formData, equipment_type: e.target.value})}
+                        className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                        placeholder={getDynamicText('equipment_type', formData.service_type, true)}
+                      />
+                    </div>
 
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Type</label>
-                              <select
-                                value={formData.service_type}
-                                onChange={(e) => setFormData({...formData, service_type: e.target.value})}
-                                className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                              >
-                                <option value="repair">🔧 Repair Service</option>
-                                <option value="checkup">🩺 Equipment Checkup</option>
-                                <option value="installation">🔌 Installation Service</option>
-                                <option value="calibration">📏 Calibration Service</option>
-                              </select>
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Type</label>
+                      <select
+                        value={formData.service_type}
+                        onChange={(e) => setFormData({...formData, service_type: e.target.value as any})}
+                        className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                      >
+                        <option value="repair">🔧 Repair Service</option>
+                        <option value="checkup">🩺 Equipment Checkup</option>
+                        <option value="installation">🔌 Installation Service</option>
+                        <option value="calibration">📏 Calibration Service</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('description', formData.service_type)}</label>
                       <textarea
                         value={formData.description}
                         onChange={(e) => setFormData({...formData, description: e.target.value})}
                         rows={3}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="Detailed description of the service performed..."
+                        placeholder={getDynamicText('description', formData.service_type, true)}
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Client Name</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('client_name', formData.service_type)}</label>
                       <input
                         type="text"
                         value={formData.client_name}
                         onChange={(e) => setFormData({...formData, client_name: e.target.value})}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="e.g., St. Mary's Medical Center"
+                        placeholder={getDynamicText('client_name', formData.service_type, true)}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Location</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('location', formData.service_type)}</label>
                       <input
                         type="text"
                         value={formData.location}
                         onChange={(e) => setFormData({...formData, location: e.target.value})}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="e.g., Room 204, ICU Wing"
+                        placeholder={getDynamicText('location', formData.service_type, true)}
                       />
                     </div>
                   </div>
                   
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Technician</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('technician', formData.service_type)}</label>
                       <input
                         type="text"
                         value={formData.technician}
                         onChange={(e) => setFormData({...formData, technician: e.target.value})}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="e.g., John Smith"
+                        placeholder={getDynamicText('technician', formData.service_type, true)}
                       />
                     </div>
                     
@@ -883,7 +962,7 @@ const CompletedServices: React.FC = () => {
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Fee (₱)</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('service_fee', formData.service_type)}</label>
                         <input
                           type="number"
                           value={formData.service_fee}
@@ -916,7 +995,7 @@ const CompletedServices: React.FC = () => {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Labor Cost (₱)</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('labor_cost', formData.service_type)}</label>
                       <input
                         type="number"
                         value={formData.labor_cost}
@@ -928,85 +1007,87 @@ const CompletedServices: React.FC = () => {
                 </div>
                 
                 {/* Parts Used Section - Conditional based on service type */}
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-bold text-gray-900">
-                      {formData.service_type === 'checkup' ? 'Parts/Materials Used (Optional)' : 'Parts/Materials Used'}
-                    </h3>
-                    <button
-                      onClick={addPartField}
-                      className="text-emerald-600 hover:text-emerald-700 text-sm font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-all border border-emerald-200 hover:border-emerald-300"
-                    >
-                      + Add Part
-                    </button>
-                  </div>
-                  
-                  {formData.service_type === 'checkup' && (
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                      <p className="text-sm text-blue-800 font-medium">
-                        💡 For equipment checkups, parts are typically not required unless issues are found during inspection.
-                      </p>
+                {shouldShowPartsSection(formData.service_type) && (
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-base font-bold text-gray-900">
+                        Parts/Materials Used
+                      </h3>
+                      <button
+                        onClick={addPartField}
+                        className="text-emerald-600 hover:text-emerald-700 text-sm font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-all border border-emerald-200 hover:border-emerald-300"
+                      >
+                        + Add Part
+                      </button>
                     </div>
-                  )}
-                  
-                  <div className="space-y-3">
-                    {formData.parts_used.map((part: any, index: number) => (
-                      <div key={index} className="grid grid-cols-4 gap-3 items-end bg-gray-50/80 p-3 rounded-xl border border-gray-200">
-                        <div className="col-span-2">
-                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Part/Material Name</label>
-                          <input
-                            type="text"
-                            value={part.name}
-                            onChange={(e) => updatePartField(index, 'name', e.target.value)}
-                            className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                            placeholder={formData.service_type === 'checkup' ? "e.g., Replacement Battery, Calibration Kit" : "e.g., Hydraulic Pump, Caster Wheels"}
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Qty</label>
-                          <input
-                            type="number"
-                            value={part.quantity}
-                            onChange={(e) => updatePartField(index, 'quantity', parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                            min="1"
-                          />
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <div className="flex-1">
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cost (₱)</label>
+                    
+                    {formData.service_type === 'checkup' && (
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                        <p className="text-sm text-blue-800 font-medium">
+                          💡 For equipment checkups, parts are typically not required unless issues are found during inspection.
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-3">
+                      {formData.parts_used.map((part: any, index: number) => (
+                        <div key={index} className="grid grid-cols-4 gap-3 items-end bg-gray-50/80 p-3 rounded-xl border border-gray-200">
+                          <div className="col-span-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Part/Material Name</label>
                             <input
-                              type="number"
-                              value={part.cost}
-                              onChange={(e) => updatePartField(index, 'cost', parseFloat(e.target.value) || 0)}
+                              type="text"
+                              value={part.name}
+                              onChange={(e) => updatePartField(index, 'name', e.target.value)}
                               className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                              placeholder={getDynamicText('parts_used', formData.service_type, true)}
                             />
                           </div>
-                          {formData.parts_used.length > 1 && (
-                            <button
-                              onClick={() => removePartField(index)}
-                              className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded-xl transition-all border border-red-200 hover:border-red-300"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          )}
+                          
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Qty</label>
+                            <input
+                              type="number"
+                              value={part.quantity}
+                              onChange={(e) => updatePartField(index, 'quantity', parseInt(e.target.value) || 1)}
+                              className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                              min="1"
+                            />
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cost (₱)</label>
+                              <input
+                                type="number"
+                                value={part.cost}
+                                onChange={(e) => updatePartField(index, 'cost', parseFloat(e.target.value) || 0)}
+                                className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                              />
+                            </div>
+                            {formData.parts_used.length > 1 && (
+                              <button
+                                onClick={() => removePartField(index)}
+                                className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded-xl transition-all border border-red-200 hover:border-red-300"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 
                 {/* Notes */}
                 <div className="mt-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Additional Notes</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('notes', formData.service_type)}</label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({...formData, notes: e.target.value})}
                     rows={3}
                     className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                    placeholder={formData.service_type === 'checkup' ? "Inspection findings, recommendations, equipment condition..." : "Any additional notes about the service..."}
+                    placeholder={getDynamicText('notes', formData.service_type, true)}
                   />
                 </div>
                 
@@ -1045,7 +1126,7 @@ const CompletedServices: React.FC = () => {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white/90 backdrop-blur-xl rounded-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto border border-white/20 shadow-2xl mx-4"
             >
-              <div className="px-4 sm:px-6 py-4 border-b border-gray-200/60 flex items-center justify-between backdrop-blur-sm">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200/60 flex items-center justify-between">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900">Edit Service</h2>
                 <button
                   onClick={() => {
@@ -1073,24 +1154,24 @@ const CompletedServices: React.FC = () => {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Title</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('title', formData.service_type)}</label>
                       <input
                         type="text"
                         value={formData.title}
                         onChange={(e) => setFormData({...formData, title: e.target.value})}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="e.g., Hospital Bed Hydraulic Repair"
+                        placeholder={getDynamicText('title', formData.service_type, true)}
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Equipment Type</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('equipment_type', formData.service_type)}</label>
                       <input
                         type="text"
                         value={formData.equipment_type}
                         onChange={(e) => setFormData({...formData, equipment_type: e.target.value})}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="e.g., Hospital Bed, IV Stand"
+                        placeholder={getDynamicText('equipment_type', formData.service_type, true)}
                       />
                     </div>
 
@@ -1098,60 +1179,59 @@ const CompletedServices: React.FC = () => {
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Type</label>
                       <select
                         value={formData.service_type}
-                        onChange={(e) => setFormData({...formData, service_type: e.target.value})}
+                        onChange={(e) => setFormData({...formData, service_type: e.target.value as any})}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
                       >
                         <option value="repair">🔧 Repair Service</option>
                         <option value="checkup">🩺 Equipment Checkup</option>
-                        <option value="maintenance">⚙️ Preventive Maintenance</option>
                         <option value="installation">🔌 Installation Service</option>
                         <option value="calibration">📏 Calibration Service</option>
                       </select>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('description', formData.service_type)}</label>
                       <textarea
                         value={formData.description}
                         onChange={(e) => setFormData({...formData, description: e.target.value})}
                         rows={3}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="Detailed description of the service performed..."
+                        placeholder={getDynamicText('description', formData.service_type, true)}
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Client Name</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('client_name', formData.service_type)}</label>
                       <input
                         type="text"
                         value={formData.client_name}
                         onChange={(e) => setFormData({...formData, client_name: e.target.value})}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="e.g., St. Mary's Medical Center"
+                        placeholder={getDynamicText('client_name', formData.service_type, true)}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Location</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('location', formData.service_type)}</label>
                       <input
                         type="text"
                         value={formData.location}
                         onChange={(e) => setFormData({...formData, location: e.target.value})}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="e.g., Room 204, ICU Wing"
+                        placeholder={getDynamicText('location', formData.service_type, true)}
                       />
                     </div>
                   </div>
                   
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Technician</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('technician', formData.service_type)}</label>
                       <input
                         type="text"
                         value={formData.technician}
                         onChange={(e) => setFormData({...formData, technician: e.target.value})}
                         className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                        placeholder="e.g., John Smith"
+                        placeholder={getDynamicText('technician', formData.service_type, true)}
                       />
                     </div>
                     
@@ -1167,7 +1247,7 @@ const CompletedServices: React.FC = () => {
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Fee (₱)</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('service_fee', formData.service_type)}</label>
                         <input
                           type="number"
                           value={formData.service_fee}
@@ -1200,7 +1280,7 @@ const CompletedServices: React.FC = () => {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Labor Cost (₱)</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('labor_cost', formData.service_type)}</label>
                       <input
                         type="number"
                         value={formData.labor_cost}
@@ -1212,85 +1292,87 @@ const CompletedServices: React.FC = () => {
                 </div>
                 
                 {/* Parts Used Section - Conditional based on service type */}
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-bold text-gray-900">
-                      {formData.service_type === 'checkup' ? 'Parts/Materials Used (Optional)' : 'Parts/Materials Used'}
-                    </h3>
-                    <button
-                      onClick={addPartField}
-                      className="text-emerald-600 hover:text-emerald-700 text-sm font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-all border border-emerald-200 hover:border-emerald-300"
-                    >
-                      + Add Part
-                    </button>
-                  </div>
-                  
-                  {formData.service_type === 'checkup' && (
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                      <p className="text-sm text-blue-800 font-medium">
-                        💡 For equipment checkups, parts are typically not required unless issues are found during inspection.
-                      </p>
+                {shouldShowPartsSection(formData.service_type) && (
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-base font-bold text-gray-900">
+                        Parts/Materials Used
+                      </h3>
+                      <button
+                        onClick={addPartField}
+                        className="text-emerald-600 hover:text-emerald-700 text-sm font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-all border border-emerald-200 hover:border-emerald-300"
+                      >
+                        + Add Part
+                      </button>
                     </div>
-                  )}
-                  
-                  <div className="space-y-3">
-                    {formData.parts_used.map((part: any, index: number) => (
-                      <div key={index} className="grid grid-cols-4 gap-3 items-end bg-gray-50/80 p-3 rounded-xl border border-gray-200">
-                        <div className="col-span-2">
-                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Part/Material Name</label>
-                          <input
-                            type="text"
-                            value={part.name}
-                            onChange={(e) => updatePartField(index, 'name', e.target.value)}
-                            className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                            placeholder={formData.service_type === 'checkup' ? "e.g., Replacement Battery, Calibration Kit" : "e.g., Hydraulic Pump, Caster Wheels"}
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Qty</label>
-                          <input
-                            type="number"
-                            value={part.quantity}
-                            onChange={(e) => updatePartField(index, 'quantity', parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                            min="1"
-                          />
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <div className="flex-1">
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cost (₱)</label>
+                    
+                    {formData.service_type === 'checkup' && (
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                        <p className="text-sm text-blue-800 font-medium">
+                          💡 For equipment checkups, parts are typically not required unless issues are found during inspection.
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-3">
+                      {formData.parts_used.map((part: any, index: number) => (
+                        <div key={index} className="grid grid-cols-4 gap-3 items-end bg-gray-50/80 p-3 rounded-xl border border-gray-200">
+                          <div className="col-span-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Part/Material Name</label>
                             <input
-                              type="number"
-                              value={part.cost}
-                              onChange={(e) => updatePartField(index, 'cost', parseFloat(e.target.value) || 0)}
+                              type="text"
+                              value={part.name}
+                              onChange={(e) => updatePartField(index, 'name', e.target.value)}
                               className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                              placeholder={getDynamicText('parts_used', formData.service_type, true)}
                             />
                           </div>
-                          {formData.parts_used.length > 1 && (
-                            <button
-                              onClick={() => removePartField(index)}
-                              className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded-xl transition-all border border-red-200 hover:border-red-300"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          )}
+                          
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Qty</label>
+                            <input
+                              type="number"
+                              value={part.quantity}
+                              onChange={(e) => updatePartField(index, 'quantity', parseInt(e.target.value) || 1)}
+                              className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                              min="1"
+                            />
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cost (₱)</label>
+                              <input
+                                type="number"
+                                value={part.cost}
+                                onChange={(e) => updatePartField(index, 'cost', parseFloat(e.target.value) || 0)}
+                                className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
+                              />
+                            </div>
+                            {formData.parts_used.length > 1 && (
+                              <button
+                                onClick={() => removePartField(index)}
+                                className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded-xl transition-all border border-red-200 hover:border-red-300"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 
                 {/* Notes */}
                 <div className="mt-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Additional Notes</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">{getDynamicText('notes', formData.service_type)}</label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({...formData, notes: e.target.value})}
                     rows={3}
                     className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
-                    placeholder={formData.service_type === 'checkup' ? "Inspection findings, recommendations, equipment condition..." : "Any additional notes about the service..."}
+                    placeholder={getDynamicText('notes', formData.service_type, true)}
                   />
                 </div>
                 
@@ -1542,6 +1624,13 @@ const CompletedServices: React.FC = () => {
           }}
         />
       )}
+
+      {/* Service Type Selection Modal */}
+      <ServiceTypeSelectionModal
+        isOpen={showServiceTypeSelectionModal}
+        onClose={() => setShowServiceTypeSelectionModal(false)}
+        onSelectServiceType={handleSelectServiceType}
+      />
     </div>
   )
 }
