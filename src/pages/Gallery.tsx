@@ -411,21 +411,13 @@ const Gallery: React.FC = () => {
             </p>
             
             {/* Key Benefits */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-400 mb-2">24hr</div>
-                <div className="text-sm text-gray-400">Emergency Response</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-red-400 mb-2">FDA</div>
-                <div className="text-sm text-gray-400">Compliant Service</div>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mt-12">
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-400 mb-2">OEM</div>
                 <div className="text-sm text-gray-400">Certified Parts</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-red-400 mb-2">15+</div>
+                <div className="text-3xl font-bold text-red-400 mb-2">30+</div>
                 <div className="text-sm text-gray-400">Years Experience</div>
               </div>
             </div>
