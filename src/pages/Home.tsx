@@ -261,7 +261,7 @@ const Home: React.FC = () => {
     };
     getFeaturedItems();
   }, []);
-
+  
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ['start start', 'end start']
@@ -623,101 +623,101 @@ const Home: React.FC = () => {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-8 sm:mb-12">
               {featuredGalleryItems.map((project, index) => {
                 return (
-                  <motion.div
-                    key={project.id}
-                    variants={itemVariants}
-                    whileHover={{
-                      y: -12,
-                      rotateY: 5,
-                      boxShadow: "0 25px 50px rgba(0,0,0,0.15)",
-                      transition: { type: "spring", stiffness: 300, damping: 20 }
-                    }}
-                    whileTap={{ scale: 0.98 }}
-                    className="bg-slate-50 rounded-xl sm:rounded-2xl shadow-lg overflow-hidden group border border-slate-200 hover:border-emerald-300 transition-all duration-300 cursor-pointer"
+              <motion.div
+                key={project.id}
+                variants={itemVariants}
+                whileHover={{
+                  y: -12,
+                  rotateY: 5,
+                  boxShadow: "0 25px 50px rgba(0,0,0,0.15)",
+                  transition: { type: "spring", stiffness: 300, damping: 20 }
+                }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-slate-50 rounded-xl sm:rounded-2xl shadow-lg overflow-hidden group border border-slate-200 hover:border-emerald-300 transition-all duration-300 cursor-pointer"
                     onClick={() => navigate(`/gallery?id=${project.id}`)}
-                  >
-                    {/* Enhanced Image Placeholder */}
-                    <motion.div 
-                      className="h-40 sm:h-48 bg-gradient-to-br from-emerald-100 to-blue-100 flex items-center justify-center relative overflow-hidden"
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.3 }}
-                    >
+              >
+                {/* Enhanced Image Placeholder */}
+                <motion.div 
+                  className="h-40 sm:h-48 bg-gradient-to-br from-emerald-100 to-blue-100 flex items-center justify-center relative overflow-hidden"
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ duration: 0.3 }}
+                >
                       {renderItemImage(project)}
-                    </motion.div>
+                </motion.div>
 
-                    {/* Enhanced Content */}
-                    <div className="p-4 sm:p-6">
-                      <motion.div 
-                        className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-2 mb-3"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                      >
-                        <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium">
-                          {project.category.replace('-', ' ')}
-                        </span>
-                        <div className="flex">
-                          {Array.from({ length: 5 }, (_, i) => (
-                            <motion.div
-                              key={i}
-                              initial={{ opacity: 0, scale: 0 }}
-                              whileInView={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: 0.3 + i * 0.1 }}
-                            >
-                              <Star 
-                                className={`w-3 h-3 sm:w-4 sm:h-4 ${i < project.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
-                              />
-                            </motion.div>
-                          ))}
-                        </div>
-                      </motion.div>
-
-                      <motion.h3 
-                        className="text-lg sm:text-xl font-bold text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors"
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                      >
-                        {project.title}
-                      </motion.h3>
-                      
-                      <motion.p 
-                        className="text-slate-600 text-xs sm:text-sm mb-4 line-clamp-3"
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                      >
-                        {project.description}
-                      </motion.p>
-
-                      <motion.div 
-                        className="space-y-2 text-xs text-slate-500 mb-4"
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Cog className="w-3 h-3" />
-                          <span className="truncate">{project.equipment_type}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-3 h-3" />
-                          <span className="truncate">{project.location}</span>
-                        </div>
-                      </motion.div>
-
-                      <motion.div 
-                        className="p-2 sm:p-3 bg-white rounded-lg border border-slate-200"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.6, type: "spring" }}
-                      >
-                        <p className="text-xs text-slate-600 italic">
-                          "{project.testimonial}"
-                        </p>
-                      </motion.div>
+                {/* Enhanced Content */}
+                <div className="p-4 sm:p-6">
+                  <motion.div 
+                    className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-2 mb-3"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium">
+                      {project.category.replace('-', ' ')}
+                    </span>
+                    <div className="flex">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, scale: 0 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.3 + i * 0.1 }}
+                        >
+                          <Star 
+                            className={`w-3 h-3 sm:w-4 sm:h-4 ${i < project.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                          />
+                        </motion.div>
+                      ))}
                     </div>
                   </motion.div>
+
+                  <motion.h3 
+                    className="text-lg sm:text-xl font-bold text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    {project.title}
+                  </motion.h3>
+                  
+                  <motion.p 
+                    className="text-slate-600 text-xs sm:text-sm mb-4 line-clamp-3"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    {project.description}
+                  </motion.p>
+
+                  <motion.div 
+                    className="space-y-2 text-xs text-slate-500 mb-4"
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Cog className="w-3 h-3" />
+                          <span className="truncate">{project.equipment_type}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-3 h-3" />
+                      <span className="truncate">{project.location}</span>
+                    </div>
+                  </motion.div>
+
+                  <motion.div 
+                    className="p-2 sm:p-3 bg-white rounded-lg border border-slate-200"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.6, type: "spring" }}
+                  >
+                    <p className="text-xs text-slate-600 italic">
+                      "{project.testimonial}"
+                    </p>
+                  </motion.div>
+                </div>
+              </motion.div>
                 )})}
             </div>
           )}
@@ -845,30 +845,30 @@ const Home: React.FC = () => {
                     {process.icon}
                   </motion.div>
                   <div className="flex-1 flex flex-col justify-between">
-                    <motion.div 
-                      className="text-2xl sm:text-3xl font-black gradient-text mb-2"
-                      initial={{ opacity: 0, scale: 0 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.2, type: "spring" }}
-                    >
-                      {process.step}
-                    </motion.div>
-                    <motion.h3 
-                      className="text-lg sm:text-xl font-bold mb-3 sm:mb-4"
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      {process.title}
-                    </motion.h3>
-                    <motion.p 
-                      className="text-slate-300 leading-relaxed text-xs sm:text-sm"
-                      initial={{ opacity: 0 }}
-                      whileInView={{ opacity: 1 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      {process.description}
-                    </motion.p>
+                  <motion.div 
+                    className="text-2xl sm:text-3xl font-black gradient-text mb-2"
+                    initial={{ opacity: 0, scale: 0 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                  >
+                    {process.step}
+                  </motion.div>
+                  <motion.h3 
+                    className="text-lg sm:text-xl font-bold mb-3 sm:mb-4"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    {process.title}
+                  </motion.h3>
+                  <motion.p 
+                    className="text-slate-300 leading-relaxed text-xs sm:text-sm"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    {process.description}
+                  </motion.p>
                   </div>
                   <motion.div 
                     className="absolute top-3 sm:top-4 right-3 sm:right-4 w-2 h-2 bg-emerald-400 rounded-full"

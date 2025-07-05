@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Navigate } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import CompletedServices from '../components/CompletedServices'
 import GalleryManager from '../components/GalleryManager'
@@ -26,13 +26,16 @@ import {
   WrenchIcon,
   PlusIcon,
   PhotoIcon,
+  HomeIcon,
 } from '@heroicons/react/24/outline'
 import vpmedLogo from '../assets/images/vpmed.jpg'
 
 const Dashboard: React.FC = () => {
   const { user, loading, signOut, isAuthenticated, session } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [currentView, setCurrentView] = useState('analytics')
+  const [currentView, setCurrentView] = useState(() => {
+    return localStorage.getItem('dashboardView') || 'analytics'
+  })
   const [analyticsData, setAnalyticsData] = useState({
     services: { totalServices: 0, totalRevenue: 0, pendingPayments: 0, paidServices: 0 },
     gallery: { totalItems: 0, featuredItems: 0, averageRating: 0, categoryCounts: {} },
@@ -135,11 +138,12 @@ const Dashboard: React.FC = () => {
   };
 
   const handleViewChange = (view: string) => {
-    setCurrentView(view);
+    setCurrentView(view)
+    localStorage.setItem('dashboardView', view)
     if (view === 'analytics') {
-      refreshAnalytics();
+      refreshAnalytics()
     }
-  };
+  }
 
   const sidebarItems = [
     { name: 'Analytics Dashboard', icon: ChartBarIcon, href: '#', current: currentView === 'analytics', view: 'analytics' },
@@ -591,199 +595,72 @@ const Dashboard: React.FC = () => {
                 </div>
               </motion.div>
 
-              {/* Content grid */}
+              {/* Quick Actions */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
-                    className="grid grid-cols-1 gap-6 lg:grid-cols-3"
+                className="grid grid-cols-1 gap-6 mt-8"
               >
-                {/* Real-time Alerts */}
-                <div className="lg:col-span-1">
-                      <div className="bg-white backdrop-blur-xl border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:shadow-gray-300/30 transition-all duration-300">
-                        <div className="px-5 py-4 border-b border-gray-100">
-                          <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                        <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-2" />
-                        Critical Alerts
-                      </h3>
-                    </div>
-                        <div className="p-5">
-                      <div className="space-y-4">
-                        {[
-                          { type: 'Equipment', message: 'Ventilator #V-204 requires maintenance', time: '2 min ago', severity: 'high' },
-                          { type: 'Inventory', message: 'Low stock: Surgical masks (12 units left)', time: '15 min ago', severity: 'medium' },
-                          { type: 'Compliance', message: 'Device calibration due: Blood pressure monitors', time: '1 hour ago', severity: 'medium' },
-                          { type: 'Safety', message: 'Temperature sensor anomaly in Storage Room B', time: '2 hours ago', severity: 'high' },
-                        ].map((alert, index) => (
-                              <div key={index} className="flex items-start space-x-3 p-3 rounded-xl bg-gradient-to-r from-gray-50 to-white border border-gray-100 hover:border-gray-200 transition-all duration-200">
-                            <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
-                                  alert.severity === 'high' ? 'bg-gradient-to-r from-red-500 to-red-600' : 'bg-gradient-to-r from-yellow-500 to-yellow-600'
-                            }`}></div>
-                            <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-semibold text-gray-900">{alert.type}</p>
-                                  <p className="text-sm text-gray-700 font-medium leading-relaxed">{alert.message}</p>
-                                  <p className="text-xs text-gray-500 mt-1 font-medium">{alert.time}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Equipment Status */}
-                <div className="lg:col-span-1">
-                      <div className="bg-white backdrop-blur-xl border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:shadow-gray-300/30 transition-all duration-300">
-                        <div className="px-5 py-4 border-b border-gray-100">
-                          <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                        <ClipboardDocumentCheckIcon className="h-5 w-5 text-emerald-500 mr-2" />
-                        Equipment Status
-                      </h3>
-                    </div>
-                        <div className="p-5">
-                      <div className="space-y-4">
-                        {[
-                          { name: 'MRI Machines', total: 8, operational: 7, maintenance: 1, status: 'good' },
-                          { name: 'Ventilators', total: 24, operational: 22, maintenance: 2, status: 'good' },
-                          { name: 'X-Ray Units', total: 12, operational: 10, maintenance: 2, status: 'warning' },
-                          { name: 'Dialysis Machines', total: 16, operational: 15, maintenance: 1, status: 'good' },
-                        ].map((equipment, index) => (
-                              <div key={index} className="bg-gradient-to-r from-gray-50 to-white border border-gray-100 rounded-xl p-4 hover:border-gray-200 transition-all duration-200">
-                                <div className="flex items-center justify-between mb-2">
-                                  <h4 className="font-semibold text-gray-900 text-sm">{equipment.name}</h4>
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                                equipment.status === 'good' 
-                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                                      : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                              }`}>
-                                {equipment.operational}/{equipment.total} Online
-                              </span>
-                            </div>
-                            <div className="mt-2">
-                                  <div className="w-full bg-gray-200 rounded-full h-2 shadow-inner">
-                                <div 
-                                      className={`h-2 rounded-full transition-all duration-500 ${
-                                        equipment.status === 'good' 
-                                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' 
-                                          : 'bg-gradient-to-r from-yellow-500 to-yellow-600'
-                                  }`}
-                                  style={{width: `${(equipment.operational / equipment.total) * 100}%`}}
-                                ></div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Quick Actions */}
                 <div className="lg:col-span-1">
-                      <div className="bg-white backdrop-blur-xl border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:shadow-gray-300/30 transition-all duration-300">
-                        <div className="px-5 py-4 border-b border-gray-100">
-                          <h3 className="text-lg font-bold text-gray-900">Quick Actions</h3>
+                  <div className="bg-white backdrop-blur-xl border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:shadow-gray-300/30 transition-all duration-300">
+                    <div className="px-5 py-4 border-b border-gray-100">
+                      <h3 className="text-lg font-bold text-gray-900">Quick Actions</h3>
                     </div>
-                        <div className="p-5">
-                          <div className="grid grid-cols-1 gap-3">
+                    <div className="p-5">
+                      <div className="grid grid-cols-1 gap-3">
                         {[
-                          { name: 'View Inventory', icon: BeakerIcon, href: '/dashboard/inventory', color: 'emerald' },
-                          { name: 'Equipment Reports', icon: ClipboardDocumentCheckIcon, href: '/dashboard/reports', color: 'blue' },
-                          { name: 'Safety Compliance', icon: ShieldCheckIcon, href: '/dashboard/compliance', color: 'green' },
-                          { name: 'Patient Data', icon: HeartIcon, href: '/dashboard/patients', color: 'red' },
-                        ].map((action) => (
-                          <a
-                            key={action.name}
-                            href={action.href}
-                                className="relative group bg-gradient-to-r from-gray-50 to-white hover:from-white hover:to-gray-50 p-4 focus-within:ring-2 focus-within:ring-inset focus-within:ring-emerald-500 rounded-xl transition-all duration-200 border border-gray-100 hover:border-gray-200 hover:shadow-lg"
-                          >
-                            <div className="flex items-center space-x-3">
-                                  <span className={`rounded-xl inline-flex p-3 ring-4 ring-white/50 shadow-lg ${
-                                    action.color === 'emerald' ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700 border border-emerald-200' :
-                                    action.color === 'blue' ? 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border border-blue-200' :
-                                    action.color === 'green' ? 'bg-gradient-to-br from-green-50 to-green-100 text-green-700 border border-green-200' :
-                                    'bg-gradient-to-br from-red-50 to-red-100 text-red-700 border border-red-200'
-                              }`}>
-                                    <action.icon className="h-5 w-5" />
-                              </span>
-                              <div>
-                                    <h3 className="text-sm font-semibold text-gray-900">{action.name}</h3>
-                              </div>
-                            </div>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Recent Activity Feed */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="mt-8"
-              >
-                    <div className="bg-white backdrop-blur-xl border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl hover:shadow-gray-300/30 transition-all duration-300">
-                      <div className="px-5 py-4 border-b border-gray-100">
-                        <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                      <ClockIcon className="h-5 w-5 text-gray-500 mr-2" />
-                      Recent Activity
-                    </h3>
-                  </div>
-                      <div className="p-5">
-                    <div className="flow-root">
-                          <ul className="-my-4 divide-y divide-gray-100">
-                        {[
-                          {
-                            event: 'Equipment maintenance completed',
-                            details: 'MRI Machine #M-105 service completed successfully',
-                            time: '10 minutes ago',
-                            type: 'maintenance',
-                            user: 'Tech Team Alpha'
-                          },
-                          {
-                            event: 'Inventory restocked',
-                            details: 'Surgical supplies: 500 units of sterile gloves received',
-                            time: '1 hour ago',
-                            type: 'inventory',
-                            user: 'Supply Manager'
-                          },
-                          {
-                            event: 'Compliance check passed',
-                            details: 'All dialysis machines passed monthly safety inspection',
-                            time: '2 hours ago',
-                            type: 'compliance',
-                            user: 'Safety Inspector'
-                          },
-                          {
-                            event: 'New equipment installed',
-                            details: 'Digital X-Ray unit #DX-309 installation completed',
-                            time: '4 hours ago',
-                            type: 'installation',
-                            user: 'Installation Team'
-                          },
-                        ].map((activity, index) => (
-                          <li key={index} className="py-4">
-                            <div className="flex items-start space-x-4">
-                              <div className={`flex-shrink-0 w-3 h-3 rounded-full mt-2 ${
-                                    activity.type === 'maintenance' ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
-                                    activity.type === 'inventory' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' :
-                                    activity.type === 'compliance' ? 'bg-gradient-to-r from-green-500 to-green-600' :
-                                    'bg-gradient-to-r from-purple-500 to-purple-600'
-                              }`}></div>
-                              <div className="min-w-0 flex-1">
-                                    <div className="text-sm font-semibold text-gray-900">{activity.event}</div>
-                                    <div className="text-sm text-gray-700 font-medium leading-relaxed">{activity.details}</div>
-                                    <div className="text-xs text-gray-500 mt-1 font-medium">
-                                  {activity.time} • by {activity.user}
+                          { name: 'Manage Services', icon: WrenchIcon, view: 'services', color: 'emerald' },
+                          { name: 'Manage Gallery', icon: PhotoIcon, view: 'gallery', color: 'purple' },
+                          { name: 'Manage Shop', icon: TruckIcon, view: 'shop', color: 'blue' },
+                          { name: 'View Public Site', icon: HomeIcon, href: '/', color: 'gray' },
+                        ].map((action) =>
+                          action.href ? (
+                            <Link
+                              key={action.name}
+                              to={action.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative group bg-gradient-to-r from-gray-50 to-white hover:from-white hover:to-gray-50 p-4 focus-within:ring-2 focus-within:ring-inset focus-within:ring-emerald-500 rounded-xl transition-all duration-200 border border-gray-100 hover:border-gray-200 hover:shadow-lg"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <span
+                                  className={`rounded-xl inline-flex p-3 ring-4 ring-white/50 shadow-lg bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700 border border-gray-200`}
+                                >
+                                  <action.icon className="h-5 w-5" />
+                                </span>
+                                <div>
+                                  <h3 className="text-sm font-semibold text-gray-900">{action.name}</h3>
                                 </div>
                               </div>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                            </Link>
+                          ) : (
+                            <button
+                              key={action.name}
+                              onClick={() => handleViewChange(action.view!)}
+                              className="relative text-left w-full group bg-gradient-to-r from-gray-50 to-white hover:from-white hover:to-gray-50 p-4 focus-within:ring-2 focus-within:ring-inset focus-within:ring-emerald-500 rounded-xl transition-all duration-200 border border-gray-100 hover:border-gray-200 hover:shadow-lg"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <span
+                                  className={`rounded-xl inline-flex p-3 ring-4 ring-white/50 shadow-lg ${
+                                    action.color === 'emerald'
+                                      ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700 border border-emerald-200'
+                                      : action.color === 'purple'
+                                      ? 'bg-gradient-to-br from-purple-50 to-purple-100 text-purple-700 border border-purple-200'
+                                      : 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border border-blue-200'
+                                  }`}
+                                >
+                                  <action.icon className="h-5 w-5" />
+                                </span>
+                                <div>
+                                  <h3 className="text-sm font-semibold text-gray-900">{action.name}</h3>
+                                </div>
+                              </div>
+                            </button>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

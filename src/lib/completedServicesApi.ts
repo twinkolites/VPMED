@@ -294,25 +294,22 @@ export async function updatePaymentStatus(
 // Get service statistics
 export async function getServiceStatistics() {
   try {
-    const { data: services, error } = await supabase
-      .from('completed_services')
-      .select('total_cost, payment_status')
+    const { data, error } = await supabase
+      .rpc('get_service_statistics')
+      .single()
 
     if (error) {
-      console.error('Error fetching service statistics:', error)
+      console.error('Error fetching service statistics via RPC:', error)
       throw error
     }
 
-    const totalServices = services?.length || 0
-    const totalRevenue = services?.reduce((sum, service) => sum + (service.total_cost || 0), 0) || 0
-    const paidServices = services?.filter(service => service.payment_status === 'paid').length || 0
-    const pendingPayments = services?.filter(service => service.payment_status !== 'paid').length || 0
-
+    const stats: any = data || {}
+    // The RPC already returns the aggregated fields
     return {
-      totalServices,
-      totalRevenue,
-      paidServices,
-      pendingPayments
+      totalServices: stats.total_services || 0,
+      totalRevenue: Number(stats.total_revenue) || 0,
+      paidServices: stats.paid_services || 0,
+      pendingPayments: stats.pending_payments || 0,
     }
   } catch (error) {
     console.error('Failed to fetch service statistics:', error)

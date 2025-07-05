@@ -36,6 +36,7 @@ import {
 import QuotationPDF from './QuotationPDF'
 import PDFPreviewModal from './PDFPreviewModal'
 import ServiceTypeSelectionModal from './ServiceTypeSelectionModal'
+import { Dialog } from '@headlessui/react'
 
 const CompletedServices: React.FC = () => {
   const [services, setServices] = useState<CompletedService[]>([])
@@ -60,6 +61,8 @@ const CompletedServices: React.FC = () => {
   const [showPDFPreview, setShowPDFPreview] = useState(false)
   const [previewService, setPreviewService] = useState<CompletedService | null>(null)
   const [showServiceTypeSelectionModal, setShowServiceTypeSelectionModal] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [showErrorModal, setShowErrorModal] = useState(false)
 
   // Helper function to get dynamic text based on service type
   const getDynamicText = (field: string, type: string, isPlaceholder: boolean = false) => {
@@ -211,20 +214,52 @@ const CompletedServices: React.FC = () => {
     return matchesSearch && matchesStatus && matchesPayment && matchesDocument
   })
 
+  const validateForm = () => {
+    if (!formData.quotation_number.trim()) return 'Quotation Number is required.'
+    if (!formData.title.trim()) return 'Title is required.'
+    if (!formData.equipment_type.trim()) return 'Equipment Type is required.'
+    if (!formData.service_type) return 'Service Type is required.'
+    if (!formData.description.trim()) return 'Description is required.'
+    if (!formData.client_name.trim()) return 'Client Name is required.'
+    if (!formData.location.trim()) return 'Location is required.'
+    if (!formData.technician.trim()) return 'Technician is required.'
+    if (!formData.service_date) return 'Service Date is required.'
+    if (!formData.completion_date) return 'Completion Date is required.'
+    if (isNaN(formData.duration) || formData.duration <= 0) return 'Duration must be greater than 0.'
+    if (isNaN(formData.service_fee) || formData.service_fee < 0) return 'Service Fee must be 0 or greater.'
+    if (isNaN(formData.labor_cost) || formData.labor_cost < 0) return 'Labor Cost must be 0 or greater.'
+    // Date logic
+    const serviceDate = new Date(formData.service_date)
+    const completionDate = new Date(formData.completion_date)
+    if (serviceDate > completionDate) return 'Service Date cannot be after Completion Date.'
+    // Parts validation (if shown)
+    if (shouldShowPartsSection(formData.service_type)) {
+      for (const part of formData.parts_used) {
+        if (!part.name.trim()) return 'All parts must have a name.'
+        if (isNaN(part.quantity) || part.quantity <= 0) return 'All parts must have a quantity greater than 0.'
+        if (isNaN(part.cost) || part.cost < 0) return 'All parts must have a cost of 0 or greater.'
+      }
+    }
+    return null
+  }
+
   const handleAddService = async () => {
+    const error = validateForm()
+    if (error) {
+      setFormError(error)
+      setShowErrorModal(true)
+      return
+    }
     try {
       setLoading(true)
       const serviceData: CreateServiceData = {
         ...formData,
-        service_type: formData.service_type as 'repair' | 'checkup' | 'maintenance' | 'installation' | 'calibration',
+        service_type: formData.service_type as 'repair' | 'checkup' | 'installation' | 'calibration',
         parts_used: formData.parts_used.filter(part => part.name.trim() !== '')
       }
-      
       await createCompletedService(serviceData)
       await loadServicesAndStats() // Refresh data
       setShowAddModal(false)
-      
-      // Clear saved form data and reset form
       clearSavedFormData()
       const resetFormData = {
         quotation_number: '',
@@ -245,8 +280,9 @@ const CompletedServices: React.FC = () => {
       }
       setFormData(resetFormData)
     } catch (error) {
+      setFormError('Error adding service. Please try again.')
+      setShowErrorModal(true)
       console.error('Error adding service:', error)
-      // You might want to show a toast notification here
     } finally {
       setLoading(false)
     }
@@ -367,21 +403,23 @@ const CompletedServices: React.FC = () => {
 
   const handleUpdateService = async () => {
     if (!editingService) return
-
+    const error = validateForm()
+    if (error) {
+      setFormError(error)
+      setShowErrorModal(true)
+      return
+    }
     try {
       setLoading(true)
       const serviceData: CreateServiceData = {
         ...formData,
-        service_type: formData.service_type as 'repair' | 'checkup' | 'maintenance' | 'installation' | 'calibration',
+        service_type: formData.service_type as 'repair' | 'checkup' | 'installation' | 'calibration',
         parts_used: formData.parts_used.filter(part => part.name.trim() !== '')
       }
-      
       await updateCompletedServiceWithParts(editingService.id, serviceData)
       await loadServicesAndStats() // Refresh data
       setShowEditModal(false)
       setEditingService(null)
-      
-      // Clear saved form data and reset form
       clearSavedFormData()
       const resetFormData = {
         quotation_number: '',
@@ -402,8 +440,9 @@ const CompletedServices: React.FC = () => {
       }
       setFormData(resetFormData)
     } catch (error) {
+      setFormError('Error updating service. Please try again.')
+      setShowErrorModal(true)
       console.error('Error updating service:', error)
-      // You might want to show a toast notification here
     } finally {
       setLoading(false)
     }
@@ -977,16 +1016,17 @@ const CompletedServices: React.FC = () => {
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Date</label>
                         <input
                           type="date"
+                          max={formData.completion_date || undefined}
                           value={formData.service_date}
                           onChange={(e) => setFormData({...formData, service_date: e.target.value})}
                           className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
                         />
                       </div>
-                      
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Completion Date</label>
                         <input
                           type="date"
+                          min={formData.service_date || undefined}
                           value={formData.completion_date}
                           onChange={(e) => setFormData({...formData, completion_date: e.target.value})}
                           className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
@@ -1262,16 +1302,17 @@ const CompletedServices: React.FC = () => {
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Service Date</label>
                         <input
                           type="date"
+                          max={formData.completion_date || undefined}
                           value={formData.service_date}
                           onChange={(e) => setFormData({...formData, service_date: e.target.value})}
                           className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
                         />
                       </div>
-                      
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Completion Date</label>
                         <input
                           type="date"
+                          min={formData.service_date || undefined}
                           value={formData.completion_date}
                           onChange={(e) => setFormData({...formData, completion_date: e.target.value})}
                           className="w-full px-3 py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium transition-all text-sm shadow-sm"
@@ -1631,6 +1672,28 @@ const CompletedServices: React.FC = () => {
         onClose={() => setShowServiceTypeSelectionModal(false)}
         onSelectServiceType={handleSelectServiceType}
       />
+
+      {/* Error Modal */}
+      <Dialog open={showErrorModal} onClose={() => setShowErrorModal(false)} className="fixed z-50 inset-0 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen px-4">
+          <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-auto shadow-2xl border border-red-200 relative z-10">
+            <Dialog.Title className="text-lg font-bold text-red-700 mb-2 flex items-center gap-2">
+              <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+              Error
+            </Dialog.Title>
+            <Dialog.Description className="text-gray-700 mb-4">
+              {formError}
+            </Dialog.Description>
+            <button
+              onClick={() => setShowErrorModal(false)}
+              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-2.5 rounded-xl font-semibold hover:from-red-600 hover:to-red-700 transition-all mt-2"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   )
 }

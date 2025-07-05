@@ -226,7 +226,7 @@ const Footer: React.FC = () => {
                   transition={{ delay: 0.3 }}
                 >
                   Your trusted partner for professional medical equipment repair, maintenance, and compliance services. 
-                  Serving healthcare facilities with excellence and reliability since 2022.
+                  Serving healthcare facilities with excellence and reliability since 2009.
                 </motion.p>
 
                 {/* Enhanced Features */}
