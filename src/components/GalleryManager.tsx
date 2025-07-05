@@ -25,13 +25,12 @@ import {
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import type { GalleryItem } from '../types'
 import {
-  fetchGalleryItems,
-  createGalleryItem,
-  updateGalleryItemWithImages,
-  deleteGalleryItem,
-  getGalleryStatistics,
-  type CreateGalleryItemData
-} from '../lib/galleryApi'
+  useGalleryOverview,
+  useCreateGalleryItem,
+  useUpdateGalleryItem,
+  useDeleteGalleryItem
+} from '../hooks/useGalleryData'
+import type { CreateGalleryItemData } from '../lib/galleryApi'
 
 const categories = [
   { value: 'before-after', label: 'Before & After', icon: WrenchIcon, color: 'bg-blue-500' },
@@ -55,19 +54,6 @@ interface CropModalState {
 }
 
 const GalleryManager: React.FC = () => {
-  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [statistics, setStatistics] = useState({
-    totalItems: 0,
-    featuredItems: 0,
-    averageRating: 0,
-    categoryCounts: {
-      'before-after': 0,
-      'equipment': 0,
-      'work-process': 0,
-      'certifications': 0
-    }
-  })
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, setEditingItem] = useState<GalleryItem | null>(null)
   const [viewingItem, setViewingItem] = useState<GalleryItem | null>(null)
@@ -101,25 +87,29 @@ const GalleryManager: React.FC = () => {
     alt_text: ''
   })
 
-  // Load gallery items and statistics on component mount
-  useEffect(() => {
-    loadGalleryData()
-  }, [])
+  // Use React Query hooks
+  const { data: galleryData, isLoading: loading, error } = useGalleryOverview()
+  const createGalleryItemMutation = useCreateGalleryItem()
+  const updateGalleryItemMutation = useUpdateGalleryItem()
+  const deleteGalleryItemMutation = useDeleteGalleryItem()
 
-  const loadGalleryData = async () => {
-    try {
-      setLoading(true)
-      const [itemsData, statsData] = await Promise.all([
-        fetchGalleryItems(),
-        getGalleryStatistics()
-      ])
-      setGalleryItems(itemsData)
-      setStatistics(statsData)
-    } catch (error) {
-      console.error('Error loading gallery data:', error)
-    } finally {
-      setLoading(false)
+  // Extract data from query result
+  const galleryItems = galleryData?.items || []
+  const statistics = galleryData?.statistics || {
+    totalItems: 0,
+    featuredItems: 0,
+    averageRating: 0,
+    categoryCounts: {
+      'before-after': 0,
+      'equipment': 0,
+      'work-process': 0,
+      'certifications': 0
     }
+  }
+
+  // Handle error state
+  if (error) {
+    console.error('Error loading gallery data:', error)
   }
 
   const handleInputChange = (field: keyof GalleryItem, value: any) => {
@@ -279,7 +269,7 @@ const GalleryManager: React.FC = () => {
     e.preventDefault()
     
     try {
-      setLoading(true)
+      setIsModalLoading(true)
       
       // Prepare images array
       const images = uploadedImages.map((img, index) => ({
@@ -304,17 +294,16 @@ const GalleryManager: React.FC = () => {
       }
 
       if (editingItem) {
-        await updateGalleryItemWithImages(editingItem.id, itemData)
+        await updateGalleryItemMutation.mutateAsync({ id: editingItem.id, data: itemData })
       } else {
-        await createGalleryItem(itemData)
+        await createGalleryItemMutation.mutateAsync(itemData)
       }
 
-      await loadGalleryData() // Refresh data
       resetForm()
     } catch (error) {
       console.error('Error saving gallery item:', error)
     } finally {
-      setLoading(false)
+      setIsModalLoading(false)
     }
   }
 
@@ -377,13 +366,9 @@ const GalleryManager: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this gallery item?')) {
       try {
-        setLoading(true)
-        await deleteGalleryItem(id)
-        await loadGalleryData() // Refresh data
+        await deleteGalleryItemMutation.mutateAsync(id)
       } catch (error) {
         console.error('Error deleting gallery item:', error)
-      } finally {
-        setLoading(false)
       }
     }
   }

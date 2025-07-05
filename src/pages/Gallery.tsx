@@ -22,35 +22,42 @@ import {
   ZoomIn
 } from 'lucide-react';
 import type { GalleryItem } from '../types';
-import { fetchGalleryItems } from '../lib/galleryApi';
+import { useGalleryOverview, usePrefetchGalleryData } from '../hooks/useGalleryData';
 import { useLocation, useNavigate } from 'react-router-dom';
+import LazyImage from '../components/LazyImage';
 
 const Gallery: React.FC = () => {
-  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
   const [expandedPhoto, setExpandedPhoto] = useState<{ url: string; caption: string } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Load gallery items on component mount
-  useEffect(() => {
-    loadGalleryItems()
-  }, [])
+  // Use React Query hook for gallery data
+  const { data: galleryData, isLoading: loading, error } = useGalleryOverview();
+  const { prefetchGalleryItems, prefetchGalleryItem } = usePrefetchGalleryData();
 
-  const loadGalleryItems = async () => {
-    try {
-      setLoading(true)
-      const items = await fetchGalleryItems()
-      setGalleryItems(items)
-    } catch (error) {
-      console.error('Error loading gallery items:', error)
-    } finally {
-      setLoading(false)
+  // Extract data from query result
+  const galleryItems = galleryData?.items || [];
+  const totalCount = galleryData?.totalCount || 0;
+  const statistics = galleryData?.statistics || {
+    totalItems: 0,
+    featuredItems: 0,
+    averageRating: 0,
+    categoryCounts: {
+      'before-after': 0,
+      'equipment': 0,
+      'work-process': 0,
+      'certifications': 0
     }
+  };
+
+  // Handle error state
+  if (error) {
+    console.error('Error loading gallery items:', error);
   }
 
   // Effect to open specific modal if ID is present in URL
@@ -81,11 +88,11 @@ const Gallery: React.FC = () => {
   };
 
   const categories = [
-    { key: 'all', label: 'All Work', icon: <Eye className="w-4 h-4" />, count: galleryItems.length },
-    { key: 'before-after', label: 'Before & After', icon: <Wrench className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'before-after').length },
-    { key: 'equipment', label: 'Equipment Service', icon: <Settings className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'equipment').length },
-    { key: 'work-process', label: 'Work Process', icon: <Activity className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'work-process').length },
-    { key: 'certifications', label: 'Certifications', icon: <Award className="w-4 h-4" />, count: galleryItems.filter(item => item.category === 'certifications').length }
+    { key: 'all', label: 'All Work', icon: <Eye className="w-4 h-4" />, count: statistics.totalItems },
+    { key: 'before-after', label: 'Before & After', icon: <Wrench className="w-4 h-4" />, count: statistics.categoryCounts['before-after'] },
+    { key: 'equipment', label: 'Equipment Service', icon: <Settings className="w-4 h-4" />, count: statistics.categoryCounts['equipment'] },
+    { key: 'work-process', label: 'Work Process', icon: <Activity className="w-4 h-4" />, count: statistics.categoryCounts['work-process'] },
+    { key: 'certifications', label: 'Certifications', icon: <Award className="w-4 h-4" />, count: statistics.categoryCounts['certifications'] }
   ]
 
   const filteredItems = galleryItems.filter(item => {
@@ -118,14 +125,14 @@ const Gallery: React.FC = () => {
         return (
           <div className="w-full h-full flex">
             <div className="flex-1 relative">
-              <img 
+              <LazyImage 
                 src={beforeImage.image_url} 
                 alt={beforeImage.caption || `${item.title} - Before`}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex-1 relative">
-              <img 
+              <LazyImage 
                 src={afterImage.image_url} 
                 alt={afterImage.caption || `${item.title} - After`}
                 className="w-full h-full object-cover"
@@ -149,7 +156,7 @@ const Gallery: React.FC = () => {
           <div className="w-full h-full grid grid-cols-2 gap-0.5">
             {displayImages.map((image, index) => (
               <div key={index} className="relative overflow-hidden">
-                <img 
+                <LazyImage 
                   src={image.image_url} 
                   alt={image.caption || item.alt_text || item.title}
                   className="w-full h-full object-cover"
@@ -169,7 +176,7 @@ const Gallery: React.FC = () => {
     // Single image display for certifications and single-image items
     if (mainImage) {
       return (
-        <img 
+        <LazyImage 
           src={mainImage.image_url} 
           alt={mainImage.caption || item.alt_text || item.title}
           className="w-full h-full object-cover"
@@ -209,10 +216,11 @@ const Gallery: React.FC = () => {
                   caption: beforeImage.caption || `${item.title} - Before` 
                 })}
               >
-                <img 
+                <LazyImage 
                   src={beforeImage.image_url} 
                   alt={beforeImage.caption || `${item.title} - Before`}
                   className="w-full h-full object-cover rounded-lg sm:rounded-none sm:rounded-l-lg"
+                  priority={true}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
                   <ZoomIn className="w-6 h-6 text-white" />
@@ -228,10 +236,11 @@ const Gallery: React.FC = () => {
                   caption: afterImage.caption || `${item.title} - After` 
                 })}
               >
-                <img 
+                <LazyImage 
                   src={afterImage.image_url} 
                   alt={afterImage.caption || `${item.title} - After`}
                   className="w-full h-full object-cover rounded-lg sm:rounded-none sm:rounded-r-lg"
+                  priority={true}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
                   <ZoomIn className="w-6 h-6 text-white" />
@@ -266,10 +275,11 @@ const Gallery: React.FC = () => {
                   caption: image.caption || `${item.title} - Step ${index + 1}` 
                 })}
               >
-                <img 
+                <LazyImage 
                   src={image.image_url} 
                   alt={image.caption || `${item.title} - Step ${index + 1}`}
                   className="w-full h-full object-cover"
+                  priority={true}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
                   <ZoomIn className="w-4 h-4 text-white" />
@@ -304,10 +314,11 @@ const Gallery: React.FC = () => {
                   caption: image.caption || `${item.title} - Process ${index + 1}` 
                 })}
               >
-                <img 
+                <LazyImage 
                   src={image.image_url} 
                   alt={image.caption || `${item.title} - Process ${index + 1}`}
                   className="w-full h-full object-cover"
+                  priority={true}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
                   <ZoomIn className="w-4 h-4 text-white" />
@@ -337,10 +348,11 @@ const Gallery: React.FC = () => {
             caption: mainImage.caption || item.alt_text || item.title 
           })}
         >
-          <img 
+          <LazyImage 
             src={mainImage.image_url} 
             alt={mainImage.caption || item.alt_text || item.title}
             className="w-full h-full object-cover"
+            priority={true}
           />
           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
             <ZoomIn className="w-6 h-6 text-white" />
@@ -718,7 +730,7 @@ const Gallery: React.FC = () => {
                               caption: image.caption || `${selectedItem.title} - ${image.image_type}` 
                             })}
                           >
-                            <img 
+                            <LazyImage 
                               src={image.image_url} 
                               alt={image.caption || `${selectedItem.title} - ${image.image_type}`}
                               className="w-full h-full object-cover"
@@ -760,10 +772,11 @@ const Gallery: React.FC = () => {
             >
               {/* Image container with fixed aspect ratio */}
               <div className="relative w-full h-[60vh] sm:h-[70vh] bg-gray-100 flex items-center justify-center">
-                <img
+                <LazyImage
                   src={expandedPhoto.url}
                   alt={expandedPhoto.caption}
                   className="max-w-full max-h-full object-contain"
+                  priority={true}
                 />
                 
                 {/* Close button */}

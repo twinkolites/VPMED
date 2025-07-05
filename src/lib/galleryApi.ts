@@ -20,16 +20,55 @@ export interface CreateGalleryItemData {
   }>
 }
 
-// Fetch all gallery items with their images
-export async function fetchGalleryItems(): Promise<GalleryItem[]> {
+export interface GalleryFetchOptions {
+  page?: number
+  limit?: number
+  category?: string
+  featured?: boolean
+  withImages?: boolean
+}
+
+// Optimized: Fetch gallery items with pagination and selective loading
+export async function fetchGalleryItems(options: GalleryFetchOptions = {}): Promise<GalleryItem[]> {
   try {
-    const { data: items, error } = await supabase
+    const { 
+      page = 1, 
+      limit = 12, 
+      category, 
+      featured, 
+      withImages = true 
+    } = options
+
+    let query = supabase
       .from('gallery_items')
-      .select(`
-        *,
-        gallery_images (*)
-      `)
+      .select(
+        withImages 
+          ? `
+            *,
+            gallery_images (*)
+          `
+          : `
+            *,
+            gallery_images (*)
+          `
+      )
+
+    // Apply filters
+    if (category && category !== 'all') {
+      query = query.eq('category', category)
+    }
+    
+    if (featured !== undefined) {
+      query = query.eq('is_featured', featured)
+    }
+
+    // Apply pagination and ordering
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
+    const { data: items, error } = await query
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (error) {
       console.error('Error fetching gallery items:', error)
@@ -43,7 +82,88 @@ export async function fetchGalleryItems(): Promise<GalleryItem[]> {
   }
 }
 
-// Fetch featured gallery items
+// Optimized: Fetch gallery overview (lightweight data for initial load)
+export async function fetchGalleryOverview(): Promise<{
+  items: GalleryItem[]
+  totalCount: number
+  statistics: any
+}> {
+  try {
+    // Fetch first page with minimal data
+    const { data: items, error: itemsError, count } = await supabase
+      .from('gallery_items')
+      .select(`
+        *,
+        gallery_images (*)
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .limit(12)
+
+    if (itemsError) {
+      console.error('Error fetching gallery overview:', itemsError)
+      throw itemsError
+    }
+
+    // Fetch statistics separately with minimal data
+    const { data: statsData, error: statsError } = await supabase
+      .from('gallery_items')
+      .select('category, is_featured, rating')
+
+    if (statsError) {
+      console.error('Error fetching gallery statistics:', statsError)
+      throw statsError
+    }
+
+    const statistics = {
+      totalItems: count || 0,
+      featuredItems: statsData?.filter(item => item.is_featured).length || 0,
+      averageRating: statsData?.length > 0 
+        ? statsData.reduce((sum, item) => sum + item.rating, 0) / statsData.length 
+        : 0,
+      categoryCounts: {
+        'before-after': statsData?.filter(item => item.category === 'before-after').length || 0,
+        'equipment': statsData?.filter(item => item.category === 'equipment').length || 0,
+        'work-process': statsData?.filter(item => item.category === 'work-process').length || 0,
+        'certifications': statsData?.filter(item => item.category === 'certifications').length || 0
+      }
+    }
+
+    return {
+      items: items || [],
+      totalCount: count || 0,
+      statistics
+    }
+  } catch (error) {
+    console.error('Failed to fetch gallery overview:', error)
+    throw error
+  }
+}
+
+// Optimized: Fetch single gallery item with all images
+export async function fetchGalleryItemById(id: string): Promise<GalleryItem | null> {
+  try {
+    const { data: item, error } = await supabase
+      .from('gallery_items')
+      .select(`
+        *,
+        gallery_images (*)
+      `)
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      console.error('Error fetching gallery item:', error)
+      throw error
+    }
+
+    return item
+  } catch (error) {
+    console.error('Failed to fetch gallery item:', error)
+    throw error
+  }
+}
+
+// Optimized: Fetch featured gallery items (lightweight)
 export async function fetchFeaturedGalleryItems(): Promise<GalleryItem[]> {
   try {
     const { data: items, error } = await supabase
@@ -54,6 +174,7 @@ export async function fetchFeaturedGalleryItems(): Promise<GalleryItem[]> {
       `)
       .eq('is_featured', true)
       .order('created_at', { ascending: false })
+      .limit(6) // Limit featured items
 
     if (error) {
       console.error('Error fetching featured gallery items:', error)
@@ -67,9 +188,16 @@ export async function fetchFeaturedGalleryItems(): Promise<GalleryItem[]> {
   }
 }
 
-// Fetch gallery items by category
-export async function fetchGalleryItemsByCategory(category: string): Promise<GalleryItem[]> {
+// Optimized: Fetch gallery items by category with pagination
+export async function fetchGalleryItemsByCategory(
+  category: string, 
+  options: { page?: number; limit?: number } = {}
+): Promise<GalleryItem[]> {
   try {
+    const { page = 1, limit = 12 } = options
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
     const { data: items, error } = await supabase
       .from('gallery_items')
       .select(`
@@ -78,6 +206,7 @@ export async function fetchGalleryItemsByCategory(category: string): Promise<Gal
       `)
       .eq('category', category)
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (error) {
       console.error('Error fetching gallery items by category:', error)
