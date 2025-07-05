@@ -63,11 +63,14 @@ const LazyImage: React.FC<LazyImageProps> = ({
   useEffect(() => {
     if (inView || priority) {
       const img = new Image()
-      const optimizedSrc = optimizeImageUrl(src, optimizationOptions)
       
-      // Generate responsive srcSet if responsive is enabled
+      // For data URLs and blob URLs, skip optimization
+      const isDataUrl = src.startsWith('data:') || src.startsWith('blob:')
+      const optimizedSrc = isDataUrl ? src : optimizeImageUrl(src, optimizationOptions)
+      
+      // Generate responsive srcSet if responsive is enabled and not a data URL
       let srcSet = ''
-      if (responsive && !width) {
+      if (responsive && !width && !isDataUrl) {
         srcSet = generateSrcSet(src, undefined, optimizationOptions)
       }
       
@@ -85,8 +88,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
       
       img.src = optimizedSrc
       
-      // Set sizes for responsive images
-      if (sizes) {
+      // Set sizes for responsive images (skip for data URLs)
+      if (sizes && !isDataUrl) {
         img.sizes = sizes
       }
     }
@@ -102,7 +105,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
         ref={imgRef}
         src={imageSrc}
         srcSet={imageSrcSet || undefined}
-        sizes={sizes || (responsive ? generateSizes() : undefined)}
+        sizes={sizes || (responsive && !src.startsWith('data:') && !src.startsWith('blob:') ? generateSizes() : undefined)}
         alt={alt}
         className={`
           w-full h-full object-cover transition-opacity duration-300

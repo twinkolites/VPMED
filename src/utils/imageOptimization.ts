@@ -134,6 +134,16 @@ export const optimizeImageUrl = (
 ): string => {
   if (!url) return ''
   
+  // Skip optimization for data URLs (base64 encoded images)
+  if (url.startsWith('data:')) {
+    return url
+  }
+  
+  // Skip optimization for blob URLs
+  if (url.startsWith('blob:')) {
+    return url
+  }
+  
   // Use provided CDN provider or auto-detect
   const provider = cdnProvider || detectCDNProvider(url)
   
@@ -153,6 +163,11 @@ export const generateSrcSet = (
   widths: number[] = [320, 640, 1024, 1280, 1920],
   options: Omit<ImageOptimizationOptions, 'width'> = {}
 ): string => {
+  // Skip srcSet generation for data URLs and blob URLs
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return ''
+  }
+  
   return widths
     .map(width => {
       const optimizedUrl = optimizeImageUrl(url, { ...options, width })

@@ -61,6 +61,7 @@ const GalleryManager: React.FC = () => {
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
   const [dragActive, setDragActive] = useState(false)
   const [isModalLoading, setIsModalLoading] = useState(false)
+  const [itemsToShow, setItemsToShow] = useState(30)
   const [cropModal, setCropModal] = useState<CropModalState>({
     isOpen: false,
     imageUrl: '',
@@ -339,8 +340,19 @@ const GalleryManager: React.FC = () => {
       const existingImages: UploadedImage[] = []
       
       if (item.gallery_images && item.gallery_images.length > 0) {
-        // Only load the first 3 images to avoid performance issues
-        const imagesToLoad = item.gallery_images.slice(0, 3)
+        // Only load essential images based on category
+        let imagesToLoad = item.gallery_images
+        
+        if (item.category === 'before-after') {
+          // Load before and after images
+          const beforeImg = item.gallery_images.find(img => img.image_type === 'before')
+          const afterImg = item.gallery_images.find(img => img.image_type === 'after')
+          imagesToLoad = [beforeImg, afterImg].filter(Boolean) as typeof item.gallery_images
+        } else {
+          // Load main image only for other categories
+          const mainImg = item.gallery_images.find(img => img.image_type === 'main') || item.gallery_images[0]
+          imagesToLoad = mainImg ? [mainImg] : []
+        }
         
         imagesToLoad.forEach(img => {
           // Create a minimal file object for existing images
@@ -373,8 +385,10 @@ const GalleryManager: React.FC = () => {
     }
   }
 
-  const filteredItems = galleryItems.filter(item => 
-    selectedCategory === 'all' || item.category === selectedCategory
+  const filteredItems = React.useMemo(() => 
+    galleryItems.filter(item => 
+      selectedCategory === 'all' || item.category === selectedCategory
+    ), [galleryItems, selectedCategory]
   )
 
   const getCategoryIcon = (category: string) => {
@@ -410,7 +424,7 @@ const GalleryManager: React.FC = () => {
     )
   }
 
-  // Helper function to render images based on type and category (similar to Gallery.tsx)
+  // Helper function to render images based on type and category (optimized for performance)
   const renderItemImage = (item: GalleryItem) => {
     const images = item.gallery_images || [];
     
@@ -427,6 +441,7 @@ const GalleryManager: React.FC = () => {
                 src={beforeImage.image_url} 
                 alt={beforeImage.caption || `${item.title} - Before`}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             </div>
             <div className="flex-1 relative">
@@ -434,6 +449,7 @@ const GalleryManager: React.FC = () => {
                 src={afterImage.image_url} 
                 alt={afterImage.caption || `${item.title} - After`}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             </div>
           </div>
@@ -458,6 +474,7 @@ const GalleryManager: React.FC = () => {
                   src={image.image_url} 
                   alt={image.caption || item.alt_text || item.title}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
                 {index === 3 && images.length > 4 && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -478,6 +495,7 @@ const GalleryManager: React.FC = () => {
           src={mainImage.image_url} 
           alt={mainImage.caption || item.alt_text || item.title}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
       );
     }
@@ -597,7 +615,10 @@ const GalleryManager: React.FC = () => {
       <div className="mb-6">
         <div className="flex flex-wrap gap-2 sm:gap-3">
           <button
-            onClick={() => setSelectedCategory('all')}
+            onClick={() => {
+              setSelectedCategory('all')
+              setItemsToShow(30) // Reset items to show when category changes
+            }}
             className={`px-3 sm:px-4 py-2 rounded-xl font-medium transition-all duration-200 text-sm ${
               selectedCategory === 'all'
                 ? 'bg-emerald-600 text-white shadow-lg'
@@ -612,7 +633,10 @@ const GalleryManager: React.FC = () => {
             return (
               <button
                 key={category.value}
-                onClick={() => setSelectedCategory(category.value)}
+                onClick={() => {
+                  setSelectedCategory(category.value)
+                  setItemsToShow(30) // Reset items to show when category changes
+                }}
                 className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl font-medium transition-all duration-200 text-sm ${
                   selectedCategory === category.value
                     ? 'bg-emerald-600 text-white shadow-lg'
@@ -631,7 +655,7 @@ const GalleryManager: React.FC = () => {
 
       {/* Gallery Items Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {filteredItems.map((item) => {
+        {filteredItems.slice(0, itemsToShow).map((item) => { // Limit items for performance
           const CategoryIcon = getCategoryIcon(item.category)
           return (
             <motion.div
@@ -755,6 +779,18 @@ const GalleryManager: React.FC = () => {
           )
         })}
       </div>
+
+      {/* Load More Button */}
+      {filteredItems.length > itemsToShow && (
+        <div className="text-center mt-8">
+          <button
+            onClick={() => setItemsToShow(prev => prev + 30)}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-medium transition-colors"
+          >
+            Load More Items ({filteredItems.length - itemsToShow} remaining)
+          </button>
+        </div>
+      )}
 
       {filteredItems.length === 0 && (
         <div className="text-center py-12 sm:py-16">
@@ -1076,6 +1112,7 @@ const GalleryManager: React.FC = () => {
                               src={image.image_url} 
                               alt={image.caption || `${viewingItem.title} - ${image.image_type}`}
                               className="w-full h-full object-cover"
+                              loading="lazy"
                             />
                           </div>
                           <span className="text-xs text-gray-600 capitalize font-medium">

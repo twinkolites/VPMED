@@ -32,6 +32,7 @@ const Gallery: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
   const [expandedPhoto, setExpandedPhoto] = useState<{ url: string; caption: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsToShow, setItemsToShow] = useState(20);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -480,7 +481,10 @@ const Gallery: React.FC = () => {
                   key={category.key}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedCategory(category.key)}
+                  onClick={() => {
+                    setSelectedCategory(category.key)
+                    setItemsToShow(20) // Reset items to show when category changes
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
                     selectedCategory === category.key
                       ? 'bg-green-600 text-white shadow-lg'
@@ -503,7 +507,10 @@ const Gallery: React.FC = () => {
                   key={category.key}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedCategory(category.key)}
+                  onClick={() => {
+                    setSelectedCategory(category.key)
+                    setItemsToShow(20) // Reset items to show when category changes
+                  }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl font-medium transition-all duration-300 text-sm ${
                     selectedCategory === category.key
                       ? 'bg-green-600 text-white shadow-lg'
@@ -530,7 +537,7 @@ const Gallery: React.FC = () => {
               layout
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8"
             >
-              {filteredItems.map((item, index) => (
+              {filteredItems.slice(0, itemsToShow).map((item, index) => (
                 <motion.div
                   key={item.id}
                   layout
@@ -629,6 +636,18 @@ const Gallery: React.FC = () => {
               ))}
             </motion.div>
           </AnimatePresence>
+
+          {/* Load More Button */}
+          {filteredItems.length > itemsToShow && (
+            <div className="text-center mt-8">
+              <button
+                onClick={() => setItemsToShow(prev => prev + 20)}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              >
+                Load More Gallery Items ({filteredItems.length - itemsToShow} remaining)
+              </button>
+            </div>
+          )}
 
           {filteredItems.length === 0 && (
             <motion.div
