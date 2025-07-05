@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useInView } from 'react-intersection-observer'
-import { optimizeImageUrl, generateSrcSet, generateSizes, getCachedSupportedFormat } from '../utils/imageOptimization'
+import { optimizeImage, generateSrcSet, generateSizes, imageUtils } from '../utils/imageOptimization'
 import type { ImageOptimizationOptions } from '../utils/imageOptimization'
 
 interface LazyImageProps {
@@ -10,7 +10,7 @@ interface LazyImageProps {
   placeholder?: string
   onLoad?: () => void
   onError?: () => void
-  quality?: 'low' | 'medium' | 'high'
+  quality?: number
   sizes?: string
   loading?: 'lazy' | 'eager'
   priority?: boolean
@@ -24,10 +24,10 @@ const LazyImage: React.FC<LazyImageProps> = ({
   src,
   alt,
   className = '',
-  placeholder = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNmNWY1ZjUiLz48cGF0aCBkPSJNNTAgMTAwSDEwMFYxNTBINTBWMTAwWiIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjEwMCIgeT0iMTA1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5IiBmb250LXNpemU9IjEyIj5JbWFnZTwvdGV4dD48L3N2Zz4=',
+  placeholder = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNSAyNUg3NVY3NUgyNVYyNVoiIGZpbGw9IiNFNUU3RUIiLz4KPC9zdmc+',
   onLoad,
   onError,
-  quality = 'medium',
+  quality = 80,
   sizes,
   loading = 'lazy',
   priority = false,
@@ -38,62 +38,62 @@ const LazyImage: React.FC<LazyImageProps> = ({
 }) => {
   const [isLoaded, setIsLoaded] = useState(false)
   const [isError, setIsError] = useState(false)
-  const [imageSrc, setImageSrc] = useState(placeholder)
-  const [imageSrcSet, setImageSrcSet] = useState('')
+  const [imageSrc, setImageSrc] = useState<string>(placeholder)
+  const [imageSrcSet, setImageSrcSet] = useState<string>('')
   const imgRef = useRef<HTMLImageElement>(null)
-
+  
   // Use intersection observer for lazy loading
   const { ref: inViewRef, inView } = useInView({
     triggerOnce: true,
     threshold: 0.1,
-    rootMargin: '50px 0px', // Load images 50px before they come into view
-    skip: priority // Skip intersection observer if high priority
+    rootMargin: '50px', // Preload 50px before entering viewport
   })
 
-  // Create optimization options
-  const optimizationOptions: ImageOptimizationOptions = {
-    width,
-    height,
-    quality: quality === 'high' ? 90 : quality === 'medium' ? 75 : 60,
-    format: getCachedSupportedFormat(),
-    fit
+  useEffect(() => {
+    // Load image when in view or if priority is set
+    if (inView || priority) {
+      loadImage()
+    }
+  }, [inView, priority, src])
+
+  const loadImage = () => {
+    // Skip optimization for data URLs and blob URLs
+    if (!imageUtils.shouldOptimizeUrl(src)) {
+      setImageSrc(src)
+      return
+    }
+
+    try {
+      // Generate optimized image URL
+      const optimizedUrl = optimizeImage(src, {
+        quality,
+        width,
+        height,
+        format: 'auto'
+      })
+      
+      // Generate srcSet for responsive images
+      let srcSet = ''
+      if (responsive) {
+        srcSet = generateSrcSet(src, { quality })
+      }
+      
+      setImageSrc(optimizedUrl)
+      setImageSrcSet(srcSet)
+    } catch (error) {
+      console.error('Error optimizing image:', error)
+      setImageSrc(src) // Fallback to original URL
+    }
   }
 
-  // Load image when in view or if high priority
-  useEffect(() => {
-    if (inView || priority) {
-      const img = new Image()
-      
-      // For data URLs and blob URLs, skip optimization
-      const isDataUrl = src.startsWith('data:') || src.startsWith('blob:')
-      const optimizedSrc = isDataUrl ? src : optimizeImageUrl(src, optimizationOptions)
-      
-      // Generate responsive srcSet if responsive is enabled and not a data URL
-      let srcSet = ''
-      if (responsive && !width && !isDataUrl) {
-        srcSet = generateSrcSet(src, undefined, optimizationOptions)
-      }
-      
-      img.onload = () => {
-        setImageSrc(optimizedSrc)
-        setImageSrcSet(srcSet)
-        setIsLoaded(true)
-        onLoad?.()
-      }
-      
-      img.onerror = () => {
-        setIsError(true)
-        onError?.()
-      }
-      
-      img.src = optimizedSrc
-      
-      // Set sizes for responsive images (skip for data URLs)
-      if (sizes && !isDataUrl) {
-        img.sizes = sizes
-      }
+  // Generate sizes attribute for responsive images
+  const generateSizesProp = () => {
+    if (sizes) return sizes
+    if (responsive && imageUtils.shouldOptimizeUrl(src)) {
+      return generateSizes()
     }
-  }, [inView, priority, src, optimizationOptions, responsive, width, sizes, onLoad, onError])
+    return undefined
+  }
 
   return (
     <div 
@@ -105,7 +105,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
         ref={imgRef}
         src={imageSrc}
         srcSet={imageSrcSet || undefined}
-        sizes={sizes || (responsive && !src.startsWith('data:') && !src.startsWith('blob:') ? generateSizes() : undefined)}
+        sizes={generateSizesProp()}
         alt={alt}
         className={`
           w-full h-full object-cover transition-opacity duration-300

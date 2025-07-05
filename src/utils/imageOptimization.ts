@@ -1,299 +1,281 @@
-// Image optimization utilities for CDN integration and performance
-
+// Image optimization utility for production deployment
 export interface ImageOptimizationOptions {
   width?: number
   height?: number
-  quality?: number | 'auto'
-  format?: 'auto' | 'webp' | 'jpg' | 'png' | 'avif'
-  fit?: 'crop' | 'contain' | 'cover' | 'fill' | 'scale'
-  gravity?: 'center' | 'north' | 'south' | 'east' | 'west' | 'northeast' | 'northwest' | 'southeast' | 'southwest'
+  quality?: number
+  format?: 'auto' | 'webp' | 'avif' | 'jpeg' | 'png'
+  fit?: 'cover' | 'contain' | 'fill' | 'inside' | 'outside'
   blur?: number
-  brightness?: number
-  contrast?: number
-  saturation?: number
+  sharpen?: boolean
 }
 
-export interface CDNProvider {
-  name: string
-  transform: (url: string, options: ImageOptimizationOptions) => string
+// CDN providers configuration
+export const CDN_PROVIDERS = {
+  CLOUDINARY: 'cloudinary',
+  IMAGEKIT: 'imagekit', 
+  VERCEL: 'vercel',
+  GENERIC: 'generic'
+} as const
+
+export type CDNProvider = typeof CDN_PROVIDERS[keyof typeof CDN_PROVIDERS]
+
+// Environment configuration
+const getImageCDNConfig = () => {
+  // Check if we're in production and have environment variables
+  const isProduction = import.meta.env.PROD
+  const cloudinaryName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+  const imagekitId = import.meta.env.VITE_IMAGEKIT_ID
+  const vercelUrl = import.meta.env.VITE_VERCEL_URL
+  
+  // Return configuration based on available environment variables
+  if (isProduction && cloudinaryName) {
+    return { provider: CDN_PROVIDERS.CLOUDINARY, cloudName: cloudinaryName }
+  } else if (isProduction && imagekitId) {
+    return { provider: CDN_PROVIDERS.IMAGEKIT, id: imagekitId }
+  } else if (isProduction && vercelUrl) {
+    return { provider: CDN_PROVIDERS.VERCEL, url: vercelUrl }
+  } else {
+    return { provider: CDN_PROVIDERS.GENERIC }
+  }
 }
 
-// Cloudinary CDN Provider
-const cloudinaryProvider: CDNProvider = {
-  name: 'cloudinary',
-  transform: (url: string, options: ImageOptimizationOptions) => {
-    // Extract public ID from Cloudinary URL if applicable
-    const cloudinaryRegex = /(?:cloudinary\.com\/[^\/]+\/image\/upload\/)(?:v\d+\/)?(.+)$/
-    const match = url.match(cloudinaryRegex)
-    
-    if (!match) return url // Not a Cloudinary URL, return as-is
-    
-    const publicId = match[1]
-    const transformations: string[] = []
+// Check if URL should be optimized
+const shouldOptimizeUrl = (url: string): boolean => {
+  // Skip optimization for:
+  // - Data URLs
+  // - Blob URLs
+  // - Relative URLs without extension
+  // - URLs already optimized
+  if (url.startsWith('data:') || 
+      url.startsWith('blob:') || 
+      url.includes('cloudinary.com') ||
+      url.includes('imagekit.io') ||
+      url.includes('vercel.app/_next/image') ||
+      url.includes('?w=') ||
+      url.includes('?quality=')) {
+    return false
+  }
+  
+  // Check if it's an image URL
+  const imageExtensions = /\.(jpg|jpeg|png|webp|avif|gif)$/i
+  return imageExtensions.test(url.split('?')[0])
+}
+
+// Cloudinary optimization
+const optimizeWithCloudinary = (url: string, options: ImageOptimizationOptions, cloudName: string): string => {
+  if (!shouldOptimizeUrl(url)) return url
+  
+  try {
+    const transformations = []
     
     if (options.width) transformations.push(`w_${options.width}`)
     if (options.height) transformations.push(`h_${options.height}`)
     if (options.quality) transformations.push(`q_${options.quality}`)
-    if (options.format) transformations.push(`f_${options.format}`)
+    if (options.format && options.format !== 'auto') transformations.push(`f_${options.format}`)
     if (options.fit) transformations.push(`c_${options.fit}`)
-    if (options.gravity) transformations.push(`g_${options.gravity}`)
     if (options.blur) transformations.push(`e_blur:${options.blur}`)
-    if (options.brightness) transformations.push(`e_brightness:${options.brightness}`)
-    if (options.contrast) transformations.push(`e_contrast:${options.contrast}`)
-    if (options.saturation) transformations.push(`e_saturation:${options.saturation}`)
+    if (options.sharpen) transformations.push(`e_sharpen`)
     
-    const transformation = transformations.join(',')
-    const baseUrl = url.split('/upload/')[0] + '/upload/'
+    // Auto format and quality for production
+    if (!options.format) transformations.push('f_auto')
+    if (!options.quality) transformations.push('q_auto')
     
-    return `${baseUrl}${transformation ? transformation + '/' : ''}${publicId}`
-  }
-}
-
-// ImageKit CDN Provider
-const imagekitProvider: CDNProvider = {
-  name: 'imagekit',
-  transform: (url: string, options: ImageOptimizationOptions) => {
-    const imagekitRegex = /^https?:\/\/ik\.imagekit\.io\/[^\/]+\//
+    const transformString = transformations.join(',')
     
-    if (!imagekitRegex.test(url)) return url // Not an ImageKit URL
-    
-    const params: string[] = []
-    
-    if (options.width) params.push(`w-${options.width}`)
-    if (options.height) params.push(`h-${options.height}`)
-    if (options.quality) params.push(`q-${options.quality}`)
-    if (options.format) params.push(`f-${options.format}`)
-    if (options.fit) {
-      const ik_fit = options.fit === 'crop' ? 'crop' : 
-                    options.fit === 'contain' ? 'pad_resize' : 
-                    options.fit === 'cover' ? 'maintain_ratio' : 'force'
-      params.push(`c-${ik_fit}`)
+    // Handle different URL formats
+    if (url.startsWith('http')) {
+      const encodedUrl = encodeURIComponent(url)
+      return `https://res.cloudinary.com/${cloudName}/image/fetch/${transformString}/${encodedUrl}`
+    } else {
+      // Assume it's a Cloudinary public ID
+      return `https://res.cloudinary.com/${cloudName}/image/upload/${transformString}/${url}`
     }
-    if (options.blur) params.push(`bl-${options.blur}`)
-    if (options.brightness) params.push(`e-brightness_${options.brightness}`)
-    if (options.contrast) params.push(`e-contrast_${options.contrast}`)
-    if (options.saturation) params.push(`e-saturation_${options.saturation}`)
-    
-    if (params.length === 0) return url
-    
-    const transformation = `tr:${params.join(',')}`
-    return url.replace(imagekitRegex, (match) => `${match}${transformation}/`)
+  } catch (error) {
+    console.error('Error optimizing with Cloudinary:', error)
+    return url
   }
 }
 
-// Vercel Image Optimization
-const vercelProvider: CDNProvider = {
-  name: 'vercel',
-  transform: (url: string, options: ImageOptimizationOptions) => {
+// ImageKit optimization
+const optimizeWithImageKit = (url: string, options: ImageOptimizationOptions, imagekitId: string): string => {
+  if (!shouldOptimizeUrl(url)) return url
+  
+  try {
     const params = new URLSearchParams()
+    
+    if (options.width) params.append('w', options.width.toString())
+    if (options.height) params.append('h', options.height.toString())
+    if (options.quality) params.append('q', options.quality.toString())
+    if (options.format && options.format !== 'auto') params.append('f', options.format)
+    if (options.fit) params.append('c', options.fit)
+    if (options.blur) params.append('bl', options.blur.toString())
+    if (options.sharpen) params.append('e-sharpen', 'true')
+    
+    // Auto format and quality for production
+    if (!options.format) params.append('f', 'auto')
+    if (!options.quality) params.append('q', 'auto')
+    
+    const queryString = params.toString()
+    
+    if (url.startsWith('http')) {
+      const encodedUrl = encodeURIComponent(url)
+      return `https://ik.imagekit.io/${imagekitId}/fetch/${encodedUrl}?${queryString}`
+    } else {
+      return `https://ik.imagekit.io/${imagekitId}/${url}?${queryString}`
+    }
+  } catch (error) {
+    console.error('Error optimizing with ImageKit:', error)
+    return url
+  }
+}
+
+// Vercel Image optimization
+const optimizeWithVercel = (url: string, options: ImageOptimizationOptions, vercelUrl: string): string => {
+  if (!shouldOptimizeUrl(url)) return url
+  
+  try {
+    const params = new URLSearchParams()
+    
+    if (options.width) params.append('w', options.width.toString())
+    if (options.height) params.append('h', options.height.toString())
+    if (options.quality) params.append('q', (options.quality || 80).toString())
+    
+    const queryString = params.toString()
+    const encodedUrl = encodeURIComponent(url)
+    
+    return `https://${vercelUrl}/_next/image?url=${encodedUrl}&${queryString}`
+  } catch (error) {
+    console.error('Error optimizing with Vercel:', error)
+    return url
+  }
+}
+
+// Generic optimization (fallback)
+const optimizeGeneric = (url: string, options: ImageOptimizationOptions): string => {
+  if (!shouldOptimizeUrl(url)) return url
+  
+  try {
+    const urlObj = new URL(url, window.location.origin)
+    const params = urlObj.searchParams
     
     if (options.width) params.set('w', options.width.toString())
     if (options.height) params.set('h', options.height.toString())
-    if (options.quality && typeof options.quality === 'number') {
-      params.set('q', Math.min(100, Math.max(1, options.quality)).toString())
-    }
-    
-    const paramString = params.toString()
-    if (!paramString) return url
-    
-    // Encode the original URL
-    const encodedUrl = encodeURIComponent(url)
-    return `/_next/image?url=${encodedUrl}&${paramString}`
-  }
-}
-
-// Generic query parameter based CDN
-const genericProvider: CDNProvider = {
-  name: 'generic',
-  transform: (url: string, options: ImageOptimizationOptions) => {
-    const urlObj = new URL(url)
-    
-    if (options.width) urlObj.searchParams.set('w', options.width.toString())
-    if (options.height) urlObj.searchParams.set('h', options.height.toString())
-    if (options.quality) urlObj.searchParams.set('q', options.quality.toString())
-    if (options.format) urlObj.searchParams.set('f', options.format)
-    if (options.fit) urlObj.searchParams.set('fit', options.fit)
+    if (options.quality) params.set('q', options.quality.toString())
+    if (options.format && options.format !== 'auto') params.set('f', options.format)
     
     return urlObj.toString()
+  } catch (error) {
+    console.error('Error with generic optimization:', error)
+    return url
   }
-}
-
-// Auto-detect CDN provider based on URL
-export const detectCDNProvider = (url: string): CDNProvider => {
-  if (url.includes('cloudinary.com')) return cloudinaryProvider
-  if (url.includes('ik.imagekit.io')) return imagekitProvider
-  if (url.includes('vercel.app') || url.includes('vercel.com')) return vercelProvider
-  return genericProvider
 }
 
 // Main optimization function
-export const optimizeImageUrl = (
-  url: string, 
-  options: ImageOptimizationOptions = {},
-  cdnProvider?: CDNProvider
-): string => {
-  if (!url) return ''
-  
-  // Skip optimization for data URLs (base64 encoded images)
-  if (url.startsWith('data:')) {
+export const optimizeImage = (url: string, options: ImageOptimizationOptions = {}): string => {
+  // Early return for URLs that shouldn't be optimized
+  if (!shouldOptimizeUrl(url)) {
     return url
   }
   
-  // Skip optimization for blob URLs
-  if (url.startsWith('blob:')) {
+  const config = getImageCDNConfig()
+  
+  try {
+    switch (config.provider) {
+      case CDN_PROVIDERS.CLOUDINARY:
+        return optimizeWithCloudinary(url, options, config.cloudName!)
+      case CDN_PROVIDERS.IMAGEKIT:
+        return optimizeWithImageKit(url, options, config.id!)
+      case CDN_PROVIDERS.VERCEL:
+        return optimizeWithVercel(url, options, config.url!)
+      default:
+        return optimizeGeneric(url, options)
+    }
+  } catch (error) {
+    console.error('Error in image optimization:', error)
     return url
   }
-  
-  // Use provided CDN provider or auto-detect
-  const provider = cdnProvider || detectCDNProvider(url)
-  
-  // Apply default optimizations for performance
-  const defaultOptions: ImageOptimizationOptions = {
-    quality: 'auto',
-    format: 'auto',
-    ...options
-  }
-  
-  return provider.transform(url, defaultOptions)
 }
 
-// Responsive image srcSet generator
-export const generateSrcSet = (
-  url: string,
-  widths: number[] = [320, 640, 1024, 1280, 1920],
-  options: Omit<ImageOptimizationOptions, 'width'> = {}
-): string => {
-  // Skip srcSet generation for data URLs and blob URLs
-  if (url.startsWith('data:') || url.startsWith('blob:')) {
+// Generate responsive image srcSet
+export const generateSrcSet = (url: string, options: ImageOptimizationOptions = {}): string => {
+  if (!shouldOptimizeUrl(url)) {
     return ''
   }
   
-  return widths
-    .map(width => {
-      const optimizedUrl = optimizeImageUrl(url, { ...options, width })
+  try {
+    const breakpoints = [320, 640, 768, 1024, 1280, 1920]
+    const srcSetEntries = breakpoints.map(width => {
+      const optimizedUrl = optimizeImage(url, { ...options, width })
       return `${optimizedUrl} ${width}w`
     })
-    .join(', ')
-}
-
-// Generate sizes attribute for responsive images
-export const generateSizes = (breakpoints: { [key: string]: string } = {
-  '(max-width: 640px)': '100vw',
-  '(max-width: 1024px)': '50vw',
-  '(max-width: 1280px)': '33vw',
-  default: '25vw'
-}): string => {
-  const entries = Object.entries(breakpoints)
-  const mediaQueries = entries.slice(0, -1).map(([query, size]) => `${query} ${size}`)
-  const defaultSize = breakpoints.default || '100vw'
-  
-  return [...mediaQueries, defaultSize].join(', ')
-}
-
-// Preload critical images
-export const preloadImage = (url: string, options: ImageOptimizationOptions = {}): void => {
-  const optimizedUrl = optimizeImageUrl(url, options)
-  
-  const link = document.createElement('link')
-  link.rel = 'preload'
-  link.as = 'image'
-  link.href = optimizedUrl
-  
-  // Add srcset for responsive preloading if width is specified
-  if (options.width) {
-    const srcSet = generateSrcSet(url, [options.width], options)
-    link.setAttribute('imagesrcset', srcSet)
+    
+    return srcSetEntries.join(', ')
+  } catch (error) {
+    console.error('Error generating srcSet:', error)
+    return ''
   }
-  
-  document.head.appendChild(link)
 }
 
-// Image format support detection
-export const getSupportedFormat = (): 'avif' | 'webp' | 'jpg' => {
-  // Check for AVIF support
-  const avifSupport = new Promise<boolean>((resolve) => {
-    const avif = new Image()
-    avif.onload = () => resolve(true)
-    avif.onerror = () => resolve(false)
-    avif.src = 'data:image/avif;base64,AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAADybWV0YQAAAAAAAAAoaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAGxpYmF2aWYAAAAADnBpdG0AAAAAAAEAAAAeaWxvYwAAAABEAAABAAEAAAABAAABGgAAAB0AAAAoaWluZgAAAAAAAQAAABppbmZlAgAAAAABAABhdjAxQ29sb3IAAAAAamlwcnAAAABLaXBjbwAAABRpc3BlAAAAAAAAAAIAAAACAAAAEHBpeGkAAAAAAwgICAAAAAxhdjFDgQ0MAAAAABNjb2xybmNseAACAAIAAYAAAAAXaXBtYQAAAAAAAAABAAEEAQKDBAAAACVtZGF0EgAKCBgABogQEAwgMg8f8D///8WfhwB8+ErK42A='
-  })
-
-  // Check for WebP support
-  const webpSupport = new Promise<boolean>((resolve) => {
-    const webp = new Image()
-    webp.onload = () => resolve(true)
-    webp.onerror = () => resolve(false)
-    webp.src = 'data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA'
-  })
-
-  // Return best supported format
-  return Promise.all([avifSupport, webpSupport]).then(([avif, webp]) => {
-    if (avif) return 'avif'
-    if (webp) return 'webp'
-    return 'jpg'
-  }) as any // Type assertion needed due to Promise handling
+// Generate sizes attribute
+export const generateSizes = (options: { 
+  mobile?: string
+  tablet?: string
+  desktop?: string
+} = {}): string => {
+  const {
+    mobile = '100vw',
+    tablet = '50vw', 
+    desktop = '33vw'
+  } = options
+  
+  return `(max-width: 768px) ${mobile}, (max-width: 1024px) ${tablet}, ${desktop}`
 }
 
-// Cached format detection result
-let supportedFormat: 'avif' | 'webp' | 'jpg' | null = null
-
-export const getCachedSupportedFormat = (): 'avif' | 'webp' | 'jpg' => {
-  if (supportedFormat) return supportedFormat
+// Detect optimal image format
+export const detectOptimalFormat = (): 'avif' | 'webp' | 'jpeg' => {
+  if (typeof window === 'undefined') return 'jpeg'
   
-  // Simple sync detection (less accurate but immediate)
   const canvas = document.createElement('canvas')
   canvas.width = 1
   canvas.height = 1
   
-  // Check WebP support
-  const webpData = canvas.toDataURL('image/webp')
-  if (webpData.indexOf('data:image/webp') === 0) {
-    supportedFormat = 'webp'
-    return 'webp'
+  try {
+    // Check for AVIF support
+    if (canvas.toDataURL('image/avif').indexOf('data:image/avif') === 0) {
+      return 'avif'
+    }
+    
+    // Check for WebP support
+    if (canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0) {
+      return 'webp'
+    }
+    
+    return 'jpeg'
+  } catch (error) {
+    return 'jpeg'
   }
-  
-  supportedFormat = 'jpg'
-  return 'jpg'
 }
 
-// Utility for gallery-specific optimizations
-export const getGalleryImageUrl = (
-  url: string,
-  size: 'thumbnail' | 'medium' | 'large' | 'original' = 'medium'
-): string => {
-  const sizeConfig = {
-    thumbnail: { width: 300, height: 200, quality: 80 },
-    medium: { width: 800, height: 600, quality: 85 },
-    large: { width: 1200, height: 900, quality: 90 },
-    original: { quality: 95 }
+// Get optimal quality based on format
+export const getOptimalQuality = (format: string): number => {
+  switch (format) {
+    case 'avif':
+      return 65
+    case 'webp':
+      return 80
+    case 'jpeg':
+      return 85
+    default:
+      return 80
   }
-  
-  const config = sizeConfig[size]
-  const format = getCachedSupportedFormat()
-  
-  return optimizeImageUrl(url, {
-    ...config,
-    format: format,
-    fit: 'cover'
-  })
 }
 
-// Responsive image component helper
-export const getResponsiveImageProps = (
-  url: string,
-  alt: string,
-  options: ImageOptimizationOptions = {}
-) => {
-  const optimizedUrl = optimizeImageUrl(url, options)
-  const srcSet = generateSrcSet(url, undefined, options)
-  const sizes = generateSizes()
-  
-  return {
-    src: optimizedUrl,
-    srcSet,
-    sizes,
-    alt,
-    loading: 'lazy' as const,
-    decoding: 'async' as const
-  }
+// Export utility functions
+export const imageUtils = {
+  optimizeImage,
+  generateSrcSet,
+  generateSizes,
+  detectOptimalFormat,
+  getOptimalQuality,
+  shouldOptimizeUrl
 } 

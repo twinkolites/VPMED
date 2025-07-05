@@ -18,4 +18,33 @@ export default defineConfig({
   optimizeDeps: {
     include: ['buffer'],
   },
+  build: {
+    // Optimize for production deployment
+    target: 'es2020',
+    minify: 'terser',
+    sourcemap: false, // Disable sourcemaps for production
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor code for better caching
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          supabase: ['@supabase/supabase-js', '@supabase/auth-ui-react'],
+          ui: ['@tanstack/react-query', 'framer-motion', '@headlessui/react'],
+          pdf: ['@react-pdf/renderer'],
+        },
+      },
+    },
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 1000,
+  },
+  server: {
+    // Development server optimization
+    host: true,
+    port: 3000,
+  },
+  preview: {
+    // Preview server settings
+    host: true,
+    port: 4173,
+  },
 })
