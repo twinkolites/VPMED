@@ -110,7 +110,7 @@ const GalleryManager: React.FC = () => {
 
   // Handle error state
   if (error) {
-    console.error('Error loading gallery data:', error)
+      console.error('Error loading gallery data:', error)
   }
 
   const handleInputChange = (field: keyof GalleryItem, value: any) => {
@@ -387,7 +387,7 @@ const GalleryManager: React.FC = () => {
 
   const filteredItems = React.useMemo(() => 
     galleryItems.filter(item => 
-      selectedCategory === 'all' || item.category === selectedCategory
+    selectedCategory === 'all' || item.category === selectedCategory
     ), [galleryItems, selectedCategory]
   )
 

@@ -48,8 +48,8 @@ export async function fetchGalleryItems(options: GalleryFetchOptions = {}): Prom
             gallery_images (*)
           `
           : `
-            *,
-            gallery_images (*)
+        *,
+        gallery_images (*)
           `
       )
 
