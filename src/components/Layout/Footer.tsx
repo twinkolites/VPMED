@@ -488,7 +488,7 @@ const Footer: React.FC = () => {
                   >
                     <Heart className="w-3 h-3 sm:w-4 sm:h-4 text-red-400" />
                   </motion.div>
-                  &copy; 2024 VPMED Medical Equipment Services. All rights reserved.
+                  &copy; 2022 VPMED Medical Equipment Services. All rights reserved.
                 </p>
               </motion.div>
 

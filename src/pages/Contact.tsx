@@ -130,7 +130,7 @@ const Contact: React.FC = () => {
                 <div className="text-sm text-gray-400">Certified Parts</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-red-400 mb-2">15+</div>
+                <div className="text-3xl font-bold text-red-400 mb-2">30+</div>
                 <div className="text-sm text-gray-400">Years Experience</div>
               </div>
             </div>
@@ -426,7 +426,7 @@ const Contact: React.FC = () => {
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-1">Service Area</h4>
                       <p className="text-gray-600">
-                        Regional coverage with local technicians<br />
+                        National coverage with local technicians<br />
                         Pickup & delivery available
                       </p>
                     </div>
@@ -453,7 +453,7 @@ const Contact: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <Award className="w-5 h-5 text-green-600 flex-shrink-0" />
-                    <span className="text-gray-700">15+ Years Experience</span>
+                    <span className="text-gray-700">30+ Years Experience</span>
                   </div>
                 </div>
               </div>

@@ -388,7 +388,7 @@ const Header: React.FC = () => {
                       transition={{ type: "spring", stiffness: 300 }}
                     >
                       <Phone className="w-4 h-4 text-green-600" />
-                      <span className="font-medium">(555) 123-4567</span>
+                      <span className="font-medium">(0927) 178-3550</span>
                     </motion.div>
                     <motion.div 
                       className="flex items-center space-x-2"
@@ -396,7 +396,7 @@ const Header: React.FC = () => {
                       transition={{ type: "spring", stiffness: 300 }}
                     >
                       <Mail className="w-4 h-4 text-green-600" />
-                      <span>info@vpmed.co</span>
+                      <span>vpmed.ph@gmail.com</span>
                     </motion.div>
                   </div>
                   
