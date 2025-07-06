@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   MapPin, 
@@ -18,6 +18,7 @@ import {
   MessageCircle,
   ArrowRight
 } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -32,7 +33,10 @@ const Contact: React.FC = () => {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
   const [productInquiry, setProductInquiry] = useState<any>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Check for product inquiry from Shop page
   useEffect(() => {
@@ -61,11 +65,37 @@ const Contact: React.FC = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Handle form submission here
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
+    setLoading(true);
+    if (!formRef.current) return;
+    emailjs.sendForm(
+      import.meta.env.VITE_EMAILJS_SERVICEID,
+      import.meta.env.VITE_EMAILJS_TEMPLATEID,
+      formRef.current,
+      import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+    )
+    .then(() => {
+      setLoading(false);
+      setShowDialog(true);
+      setTimeout(() => setShowDialog(false), 4000);
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 3000);
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        company: '',
+        equipment: '',
+        service: '',
+        message: '',
+        urgency: 'routine',
+      });
+    })
+    .catch((error) => {
+      setLoading(false);
+      console.error('Email sending error:', error);
+    });
   };
 
   return (
@@ -232,7 +262,7 @@ const Contact: React.FC = () => {
                 Complete the form below for detailed service requests and quotes.
               </p>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -362,14 +392,15 @@ const Contact: React.FC = () => {
 
                 <motion.button
                   type="submit"
+                  disabled={loading}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                  className={`w-full bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {submitted ? (
+                  {loading ? (
                     <>
-                      <CheckCircle className="w-5 h-5" />
-                      Request Submitted!
+                      <Activity className="w-5 h-5 animate-spin" />
+                      Sending...
                     </>
                   ) : (
                     <>
@@ -461,6 +492,16 @@ const Contact: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {showDialog && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
+            <CheckCircle className="mx-auto mb-4 w-12 h-12 text-green-600" />
+            <h3 className="text-xl font-semibold mb-2">Thank you!</h3>
+            <p className="text-gray-700">We will contact you right away!</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
