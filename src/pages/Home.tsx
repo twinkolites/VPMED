@@ -377,7 +377,7 @@ const Home: React.FC = () => {
               className="text-lg sm:text-xl md:text-2xl text-gray-600 mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed px-4"
               variants={itemVariants}
             >
-              Trusted by hospitals, clinics, and healthcare facilities worldwide. 
+              Trusted by hospitals, clinics, and healthcare facilities Nationwide. 
               We deliver excellence through cutting-edge technology and unmatched expertise.
             </motion.p>
 
