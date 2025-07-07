@@ -560,7 +560,7 @@ const Services: React.FC = () => {
           </motion.div>
 
           <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8"
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
@@ -585,24 +585,14 @@ const Services: React.FC = () => {
                 description: 'Factory-trained and certified technicians with ongoing education and training.',
                 color: 'purple'
               },
-              {
-                icon: <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8" />,
-                title: 'FDA Compliance',
-                description: 'All work performed to FDA standards with proper documentation and traceability.',
-                color: 'green'
-              },
+              
               {
                 icon: <Users className="w-6 h-6 sm:w-8 sm:h-8" />,
                 title: 'Customer Support',
                 description: 'Dedicated customer support team available for questions and follow-up service.',
                 color: 'orange'
               },
-              {
-                icon: <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8" />,
-                title: 'Performance Tracking',
-                description: 'Equipment performance monitoring and maintenance scheduling optimization.',
-                color: 'red'
-              }
+              
             ].map((guarantee, index) => (
               <motion.div
                 key={guarantee.title}
@@ -616,7 +606,12 @@ const Services: React.FC = () => {
                 className="bg-slate-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center group hover:bg-white hover:shadow-lg transition-all duration-300"
               >
                 <motion.div 
-                  className={`w-12 h-12 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl bg-gradient-to-r from-${guarantee.color}-500 to-${guarantee.color}-600 flex items-center justify-center mx-auto mb-3 sm:mb-4 text-white`}
+                  className={`w-12 h-12 sm:w-16 sm:h-16 rounded-lg sm:rounded-xl bg-gradient-to-r ${
+                    guarantee.color === 'emerald' ? 'from-emerald-500 to-emerald-600' :
+                    guarantee.color === 'blue' ? 'from-blue-500 to-blue-600' :
+                    guarantee.color === 'purple' ? 'from-purple-500 to-purple-600' :
+                    'from-orange-500 to-orange-600'
+                  } flex items-center justify-center mx-auto mb-3 sm:mb-4 text-white`}
                   whileHover={{ 
                     scale: shouldReduceMotion ? 1.02 : 1.1,
                     rotate: shouldReduceMotion ? 0 : [0, -10, 10, 0],
@@ -661,7 +656,7 @@ const Services: React.FC = () => {
                       <h4 className="font-semibold text-slate-900 mb-2 text-sm sm:text-base">Service Scheduling</h4>
                       <ul className="text-slate-700 space-y-1 text-xs sm:text-sm">
                         <li>• All services require advance scheduling</li>
-                        <li>• Emergency repairs available 24/7</li>
+                        
                         <li>• Pickup and delivery coordination</li>
                         <li>• Loaner equipment available when possible</li>
                       </ul>
@@ -720,7 +715,6 @@ const Services: React.FC = () => {
               viewport={{ once: true }}
             >
               {[
-                { icon: Phone, text: "24/7 Emergency Line" },
                 { icon: Mail, text: "Professional Service Team" },
                 { icon: CheckCircle, text: "Licensed & Insured" }
               ].map((item, index) => (
