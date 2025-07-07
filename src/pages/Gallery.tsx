@@ -204,6 +204,7 @@ const Gallery: React.FC = () => {
     if (item.category === 'before-after') {
       const beforeImage = images.find(img => img.image_type === 'before');
       const afterImage = images.find(img => img.image_type === 'after');
+      const additionalImages = images.filter(img => img.image_type === 'additional');
       
       if (beforeImage && afterImage) {
         return (
@@ -251,6 +252,12 @@ const Gallery: React.FC = () => {
                 </div>
               </div>
             </div>
+            {/* Show additional images indicator if available */}
+            {additionalImages.length > 0 && (
+              <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                +{additionalImages.length} more
+              </div>
+            )}
           </div>
         );
       }

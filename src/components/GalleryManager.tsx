@@ -42,14 +42,14 @@ const categories = [
 interface UploadedImage {
   file: File;
   preview: string;
-  type: 'main' | 'before' | 'after';
+  type: 'main' | 'before' | 'after' | 'additional';
   cropped?: boolean;
 }
 
 interface CropModalState {
   isOpen: boolean;
   imageUrl: string;
-  imageType: 'main' | 'before' | 'after';
+  imageType: 'main' | 'before' | 'after' | 'additional';
   originalFile: File;
 }
 
@@ -74,6 +74,7 @@ const GalleryManager: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const beforeFileInputRef = useRef<HTMLInputElement>(null)
   const afterFileInputRef = useRef<HTMLInputElement>(null)
+  const additionalFileInputRef = useRef<HTMLInputElement>(null)
   const cropImageRef = useRef<HTMLImageElement>(null)
   
   const [formData, setFormData] = useState<Partial<GalleryItem>>({
@@ -174,7 +175,7 @@ const GalleryManager: React.FC = () => {
     setCrop(crop)
   }, [])
 
-  const handleImageUpload = (files: FileList | null, type: 'main' | 'before' | 'after' = 'main') => {
+  const handleImageUpload = (files: FileList | null, type: 'main' | 'before' | 'after' | 'additional' = 'main') => {
     if (!files) return
 
     Array.from(files).forEach(file => {
@@ -182,17 +183,25 @@ const GalleryManager: React.FC = () => {
         const reader = new FileReader()
         reader.onload = (e) => {
           const preview = e.target?.result as string
-          setUploadedImages(prev => [
-            ...prev.filter(img => img.type !== type), // Remove existing image of same type
-            { file, preview, type, cropped: false }
-          ])
+          setUploadedImages(prev => {
+            if (type === 'additional') {
+              // For additional images, append to existing additional images
+              return [...prev, { file, preview, type, cropped: false }]
+            } else {
+              // For main, before, after - replace existing image of same type
+              return [
+                ...prev.filter(img => img.type !== type),
+                { file, preview, type, cropped: false }
+              ]
+            }
+          })
         }
         reader.readAsDataURL(file)
       }
     })
   }
 
-  const openCropModal = (imageUrl: string, imageType: 'main' | 'before' | 'after', originalFile: File) => {
+  const openCropModal = (imageUrl: string, imageType: 'main' | 'before' | 'after' | 'additional', originalFile: File) => {
     setCropModal({
       isOpen: true,
       imageUrl,
@@ -252,7 +261,7 @@ const GalleryManager: React.FC = () => {
     }
   }
 
-  const handleDrop = (e: React.DragEvent, type: 'main' | 'before' | 'after' = 'main') => {
+  const handleDrop = (e: React.DragEvent, type: 'main' | 'before' | 'after' | 'additional' = 'main') => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
@@ -262,8 +271,18 @@ const GalleryManager: React.FC = () => {
     }
   }
 
-  const removeImage = (type: 'main' | 'before' | 'after') => {
-    setUploadedImages(prev => prev.filter(img => img.type !== type))
+  const removeImage = (type: 'main' | 'before' | 'after' | 'additional', index?: number) => {
+    setUploadedImages(prev => {
+      if (type === 'additional' && index !== undefined) {
+        // Remove specific additional image by index
+        const additionalImages = prev.filter(img => img.type === 'additional')
+        const imageToRemove = additionalImages[index]
+        return prev.filter(img => img !== imageToRemove)
+      } else {
+        // Remove all images of the specified type
+        return prev.filter(img => img.type !== type)
+      }
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -272,13 +291,22 @@ const GalleryManager: React.FC = () => {
     try {
       setIsModalLoading(true)
       
-      // Prepare images array
+      // Prepare images array with proper sort order
       const images = uploadedImages.map((img, index) => ({
         image_url: img.preview, // In real app, this would be uploaded to storage first
         image_type: img.type,
         caption: '',
         sort_order: index
       }))
+
+      // Sort images to ensure proper order: main, before, after, then additional
+      images.sort((a, b) => {
+        const typeOrder = { main: 0, before: 1, after: 2, additional: 3 }
+        const aOrder = typeOrder[a.image_type as keyof typeof typeOrder]
+        const bOrder = typeOrder[b.image_type as keyof typeof typeOrder]
+        if (aOrder !== bOrder) return aOrder - bOrder
+        return a.sort_order - b.sort_order
+      })
 
       const itemData: CreateGalleryItemData = {
         title: formData.title || '',
@@ -344,14 +372,16 @@ const GalleryManager: React.FC = () => {
         let imagesToLoad = item.gallery_images
         
         if (item.category === 'before-after') {
-          // Load before and after images
+          // Load before and after images, plus additional images
           const beforeImg = item.gallery_images.find(img => img.image_type === 'before')
           const afterImg = item.gallery_images.find(img => img.image_type === 'after')
-          imagesToLoad = [beforeImg, afterImg].filter(Boolean) as typeof item.gallery_images
+          const additionalImages = item.gallery_images.filter(img => img.image_type === 'additional')
+          imagesToLoad = [beforeImg, afterImg, ...additionalImages].filter(Boolean) as typeof item.gallery_images
         } else {
-          // Load main image only for other categories
+          // Load main image and additional images for other categories
           const mainImg = item.gallery_images.find(img => img.image_type === 'main') || item.gallery_images[0]
-          imagesToLoad = mainImg ? [mainImg] : []
+          const additionalImages = item.gallery_images.filter(img => img.image_type === 'additional')
+          imagesToLoad = [mainImg, ...additionalImages].filter(Boolean) as typeof item.gallery_images
         }
         
         imagesToLoad.forEach(img => {
@@ -509,7 +539,7 @@ const GalleryManager: React.FC = () => {
     );
   };
 
-  const renderImageUploadArea = (type: 'main' | 'before' | 'after', label: string, inputRef: React.RefObject<HTMLInputElement | null>) => {
+  const renderImageUploadArea = (type: 'main' | 'before' | 'after' | 'additional', label: string, inputRef: React.RefObject<HTMLInputElement | null>) => {
     const existingImage = uploadedImages.find(img => img.type === type)
     
     return (
@@ -569,8 +599,83 @@ const GalleryManager: React.FC = () => {
           ref={inputRef}
           type="file"
           accept="image/*"
-          multiple={false}
+          multiple={type === 'additional'}
           onChange={(e) => handleImageUpload(e.target.files, type)}
+          className="hidden"
+        />
+      </div>
+    )
+  }
+
+  const renderAdditionalImagesArea = () => {
+    const additionalImages = uploadedImages.filter(img => img.type === 'additional')
+    
+    return (
+      <div className="space-y-3">
+        <label className="block text-xs font-medium text-gray-600">Additional Images</label>
+        
+        {/* Existing additional images */}
+        {additionalImages.length > 0 && (
+          <div className="grid grid-cols-2 gap-2">
+            {additionalImages.map((img, index) => (
+              <div key={index} className="relative">
+                <img
+                  src={img.preview}
+                  alt={`Additional image ${index + 1}`}
+                  className="w-full h-20 object-cover rounded-lg border border-gray-200"
+                />
+                <div className="absolute top-1 right-1 flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openCropModal(img.preview, 'additional', img.file)}
+                    className="p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors z-10"
+                    title="Crop Image"
+                  >
+                    <ScissorsIcon className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeImage('additional', index)}
+                    className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                    title="Remove Image"
+                  >
+                    <XMarkIcon className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
+                  {index + 1}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {/* Upload area for additional images */}
+        <div
+          className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors cursor-pointer ${
+            dragActive 
+              ? 'border-emerald-400 bg-emerald-50' 
+              : 'border-gray-300 hover:border-emerald-400 hover:bg-emerald-50'
+          }`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={(e) => handleDrop(e, 'additional')}
+          onClick={() => additionalFileInputRef.current?.click()}
+        >
+          <CloudArrowUpIcon className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+          <div className="text-xs text-gray-600 mb-1">
+            <span className="font-medium text-emerald-600">Click to upload more</span>
+          </div>
+          <div className="text-xs text-gray-500">Multiple files supported</div>
+        </div>
+        
+        <input
+          ref={additionalFileInputRef}
+          type="file"
+          accept="image/*"
+          multiple={true}
+          onChange={(e) => handleImageUpload(e.target.files, 'additional')}
           className="hidden"
         />
       </div>
@@ -941,6 +1046,11 @@ const GalleryManager: React.FC = () => {
                         </div>
                       </div>
                     )}
+                    
+                    {/* Additional Images - Show for all categories */}
+                    <div className="space-y-2">
+                      {renderAdditionalImagesArea()}
+                    </div>
                   </div>
                 </div>
 
@@ -987,17 +1097,53 @@ const GalleryManager: React.FC = () => {
                   />
                 </div>
 
-                {/* Image Summary */}
+                {/* Image Preview */}
                 {uploadedImages.length > 0 && (
                   <div className="bg-emerald-50 p-4 rounded-lg">
-                    <h4 className="text-sm font-semibold text-emerald-800 mb-2">Uploaded Images:</h4>
-                    <div className="space-y-1">
+                    <h4 className="text-sm font-semibold text-emerald-800 mb-3">
+                      Uploaded Images ({uploadedImages.length})
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {uploadedImages.map((img, index) => (
-                        <div key={index} className="flex items-center gap-2 text-sm text-emerald-700">
-                          <DocumentIcon className="h-4 w-4" />
-                          <span className="capitalize">{img.type}</span>: {img.file.name}
+                        <div key={index} className="relative group">
+                          <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                            <img
+                              src={img.preview}
+                              alt={`${img.type} preview`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                            <div className="text-white text-xs text-center">
+                              <div className="font-medium capitalize">{img.type}</div>
+                              {img.cropped && (
+                                <div className="flex items-center justify-center gap-1 mt-1">
+                                  <CheckIcon className="h-3 w-3" />
+                                  <span>Cropped</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="absolute bottom-1 left-1 bg-emerald-600 text-white text-xs px-2 py-1 rounded font-medium">
+                            {img.type === 'additional' ? 
+                              `Add ${uploadedImages.filter(i => i.type === 'additional').indexOf(img) + 1}` : 
+                              img.type.charAt(0).toUpperCase() + img.type.slice(1)
+                            }
+                          </div>
                         </div>
                       ))}
+                    </div>
+                    <div className="mt-3 text-xs text-emerald-700">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>Main: {uploadedImages.filter(img => img.type === 'main').length}</div>
+                        <div>Additional: {uploadedImages.filter(img => img.type === 'additional').length}</div>
+                        {formData.category === 'before-after' && (
+                          <>
+                            <div>Before: {uploadedImages.filter(img => img.type === 'before').length}</div>
+                            <div>After: {uploadedImages.filter(img => img.type === 'after').length}</div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
