@@ -487,8 +487,8 @@ const Home: React.FC = () => {
             {[
               {
                 icon: <Wrench className="w-10 h-10 sm:w-12 sm:h-12" />,
-                title: "Emergency Equipment Repair",
-                description: "Critical 24-hour emergency repair services for life-support and essential medical equipment",
+                title: "Medical Equipment Repair",
+                description: "Reliable repair services for essential and life-support medical devices—designed to keep your equipment operational",
                 gradient: "from-red-500 to-red-600",
                 category: "repair"
               },
